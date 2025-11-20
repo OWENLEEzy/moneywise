@@ -13,8 +13,7 @@ final class AIService {
     }
 
     func parse(text: String, context: ModelContext) async throws -> Transaction {
-        let response = try await gemini.parseTransaction(prompt: text, apiKey: apiKeyProvider())
-        let parsed = response.transaction
+        let parsed = try await gemini.parseTransaction(prompt: text, apiKey: apiKeyProvider())
         let category = try context.category(named: parsed.category, type: parsed.type)
         
         return Transaction(
@@ -36,28 +35,177 @@ final class AIService {
         let response = try await gemini.analyze(question: question, dataset: dataset, apiKey: apiKeyProvider())
         return response.text
     }
+
+    func generateInsights(transactions: [Transaction], period: String, context: ModelContext) async throws -> GeminiInsightResponse {
+        let apiKey = apiKeyProvider()
+        guard let apiKey else { throw AIServiceError.missingAPIKey }
+        
+        let dataset = transactions.map { 
+            "\($0.date.formatted(date: .numeric, time: .omitted)): \($0.category?.name ?? "Uncategorized") - \($0.amount) (\($0.note))" 
+        }.joined(separator: "\n")
+        
+        let prompt = GeminiPromptBuilder().insightPrompt(period: period, dataset: dataset)
+        let data = try await gemini.send(payload: prompt, apiKey: apiKey)
+        
+        do {
+            let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
+            guard let text = response.text.data(using: .utf8) else {
+                throw AIServiceError.decodingFailed
+            }
+            return try JSONDecoder.gemini.decode(GeminiInsightResponse.self, from: text)
+        } catch {
+            throw AIServiceError.decodingFailed
+        }
+    }
 }
 
+final class GeminiService {
+    private let session: URLSession
+    // Switching to stable Gemini 1.5 Flash model to ensure reliability
+    private let baseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")!
 
+    init(session: URLSession = .shared) {
+        self.session = session
+    }
+
+    func parseTransaction(prompt: String, apiKey: String?) async throws -> GeminiResponse {
+        guard let apiKey else { throw AIServiceError.missingAPIKey }
+        let payload = GeminiPromptBuilder().transactionPrompt(with: prompt)
+        let data = try await send(payload: payload, apiKey: apiKey)
+        do {
+            let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
+            // Clean up the text response to ensure it's valid JSON
+            let cleanText = response.text.trimmingCharacters(in: .whitespacesAndNewlines)
+                .replacingOccurrences(of: "```json", with: "")
+                .replacingOccurrences(of: "```", with: "")
+            
+            guard let textData = cleanText.data(using: .utf8) else {
+                throw AIServiceError.decodingFailed
+            }
+            return try JSONDecoder.gemini.decode(GeminiResponse.self, from: textData)
+        } catch {
+            print("Decoding error: \(error)")
+            throw AIServiceError.decodingFailed
+        }
+    }
+
+    func analyze(question: String, dataset: String, apiKey: String?) async throws -> GeminiTextResponse {
+        guard let apiKey else { throw AIServiceError.missingAPIKey }
+        let prompt = GeminiPromptBuilder().analysisPrompt(question: question, dataset: dataset)
+        let data = try await send(payload: prompt, apiKey: apiKey)
+        do {
+            return try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
+        } catch {
+            throw AIServiceError.decodingFailed
+        }
+    }
+
+    func send(payload: GeminiPromptBuilder.Payload, apiKey: String) async throws -> Data {
+        var request = URLRequest(url: baseURL)
+        request.httpMethod = "POST"
+        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+        request.addValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
+        request.httpBody = try JSONEncoder().encode(payload)
+
+        do {
+            let (data, response) = try await session.data(for: request)
+            
+            guard let httpResponse = response as? HTTPURLResponse else {
+                throw AIServiceError.invalidResponse
+            }
+            
+            switch httpResponse.statusCode {
+            case 200..<300:
+                return data
+            case 400:
+                if let errorText = String(data: data, encoding: .utf8),
+                   errorText.contains("API_KEY_INVALID") || errorText.contains("INVALID_ARGUMENT") {
+                    throw AIServiceError.invalidAPIKey
+                }
+                throw AIServiceError.clientError(400, "Bad Request")
+            case 401, 403:
+                throw AIServiceError.invalidAPIKey
+            case 500..<600:
+                throw AIServiceError.serverError(httpResponse.statusCode)
+            default:
+                let statusCode = httpResponse.statusCode
+                print("API Error: \(statusCode)")
+                if let errorText = String(data: data, encoding: .utf8) {
+                    print("Error details: \(errorText)")
+                }
+                throw AIServiceError.clientError(statusCode, "Unexpected Error")
+            }
+        } catch let error as URLError {
+            switch error.code {
+            case .notConnectedToInternet:
+                throw AIServiceError.networkError("No Internet Connection")
+            case .timedOut:
+                throw AIServiceError.networkError("Request Timed Out")
+            case .cannotFindHost, .cannotConnectToHost:
+                throw AIServiceError.networkError("Host Unreachable")
+            default:
+                throw AIServiceError.networkError(error.localizedDescription)
+            }
+        } catch {
+            throw error
+        }
+    }
+}
+
+struct GeminiPromptBuilder {
+    struct Payload: Encodable {
+        struct Content: Encodable {
+            struct Part: Encodable {
+                let text: String
+            }
+
+            let parts: [Part]
+        }
+
+        let contents: [Content]
+        let generationConfig: GenerationConfig
+    }
+    
+    struct GenerationConfig: Encodable {
+        let responseMimeType: String
+    }
+
+    func transactionPrompt(with text: String) -> Payload {
+        let jsonTemplate = Prompt.transaction(text: text)
+        return Payload(
+            contents: [.init(parts: [.init(text: jsonTemplate)])],
+            generationConfig: .init(responseMimeType: "application/json")
+        )
+    }
+
+    func analysisPrompt(question: String, dataset: String) -> Payload {
+        let instruction = Prompt.analysis(question: question, dataset: dataset)
+        return Payload(
+            contents: [.init(parts: [.init(text: instruction)])],
+            generationConfig: .init(responseMimeType: "text/plain")
+        )
+    }
+    
+    func insightPrompt(period: String, dataset: String) -> Payload {
+        let jsonTemplate = Prompt.insight(period: period, dataset: dataset)
+        
+        return Payload(
+            contents: [.init(parts: [.init(text: jsonTemplate)])],
+            generationConfig: .init(responseMimeType: "application/json")
+        )
+    }
+}
+
+// Flattened GeminiResponse to match the JSON output from the AI
 struct GeminiResponse: Decodable {
-    struct ParsedTransaction: Decodable {
-        let amount: Double
-        let type: TransactionType
-        let category: String
-        let account: String
-        let paymentMethod: String
-        let note: String
-        let confidence: Double
-        let date: Date
-    }
-
-    let transaction: ParsedTransaction
-    let usage: Usage
-
-    struct Usage: Decodable {
-        let inputTokens: Int
-        let outputTokens: Int
-    }
+    let amount: Double
+    let type: TransactionType
+    let category: String
+    let account: String
+    let paymentMethod: String
+    let note: String
+    let confidence: Double
+    let date: Date
 }
 
 struct GeminiTextResponse: Decodable {
@@ -84,118 +232,32 @@ struct GeminiTextResponse: Decodable {
     var text: String {
         candidates.first?.content.parts.compactMap { $0.text }.joined(separator: "\n") ?? ""
     }
+}
 
-    var usage: GeminiResponse.Usage {
-        GeminiResponse.Usage(
-            inputTokens: usageMetadata?.promptTokenCount ?? 0,
-            outputTokens: usageMetadata?.candidatesTokenCount ?? 0
-        )
-    }
+struct GeminiInsightResponse: Decodable {
+    let summary: String
+    let insights: [String]
 }
 
 enum AIServiceError: Error, LocalizedError {
     case missingAPIKey
     case invalidResponse
     case decodingFailed
+    case networkError(String)
+    case invalidAPIKey
+    case serverError(Int)
+    case clientError(Int, String)
 
     var errorDescription: String? {
         switch self {
-        case .missingAPIKey: return "请先配置 Gemini API Key"
-        case .invalidResponse: return "AI 响应异常，请稍后重试"
-        case .decodingFailed: return "无法解析 AI 返回内容"
+        case .missingAPIKey: return "Please configure Gemini API Key first"
+        case .invalidResponse: return "AI response error, please try again later"
+        case .decodingFailed: return "Failed to parse AI response"
+        case .networkError(let message): return "Network Error: \(message)"
+        case .invalidAPIKey: return "Invalid API Key. Please check your key."
+        case .serverError(let code): return "Server Error (Code: \(code)). Please try again later."
+        case .clientError(let code, let message): return "Request Error (Code: \(code)): \(message)"
         }
-    }
-}
-
-final class GeminiService {
-    private let session: URLSession
-    private let baseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-latest:generateContent")!
-
-    init(session: URLSession = .shared) {
-        self.session = session
-    }
-
-    func parseTransaction(prompt: String, apiKey: String?) async throws -> GeminiResponse {
-        guard let apiKey else { throw AIServiceError.missingAPIKey }
-        let payload = GeminiPromptBuilder().transactionPrompt(with: prompt)
-        let data = try await send(payload: payload, apiKey: apiKey)
-        do {
-            let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
-            guard let text = response.text.data(using: .utf8) else {
-                throw AIServiceError.decodingFailed
-            }
-            return try JSONDecoder.gemini.decode(GeminiResponse.self, from: text)
-        } catch {
-            throw AIServiceError.decodingFailed
-        }
-    }
-
-    func analyze(question: String, dataset: String, apiKey: String?) async throws -> GeminiTextResponse {
-        guard let apiKey else { throw AIServiceError.missingAPIKey }
-        let prompt = GeminiPromptBuilder().analysisPrompt(question: question, dataset: dataset)
-        let data = try await send(payload: prompt, apiKey: apiKey)
-        do {
-            return try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
-        } catch {
-            throw AIServiceError.decodingFailed
-        }
-    }
-
-    private func send(payload: GeminiPromptBuilder.Payload, apiKey: String) async throws -> Data {
-        var request = URLRequest(url: baseURL)
-        request.httpMethod = "POST"
-        request.addValue("application/json", forHTTPHeaderField: "Content-Type")
-        request.addValue(apiKey, forHTTPHeaderField: "x-goog-api-key")
-        request.httpBody = try JSONEncoder().encode(payload)
-
-        let (data, response) = try await session.data(for: request)
-        guard let httpResponse = response as? HTTPURLResponse, 200 ..< 300 ~= httpResponse.statusCode else {
-            throw AIServiceError.invalidResponse
-        }
-        return data
-    }
-}
-
-struct GeminiPromptBuilder {
-    struct Payload: Encodable {
-        struct Content: Encodable {
-            struct Part: Encodable {
-                let text: String
-            }
-
-            let parts: [Part]
-        }
-
-        let contents: [Content]
-        let generationConfig: GenerationConfig
-    }
-    
-    struct GenerationConfig: Encodable {
-        let responseMimeType: String
-    }
-
-    func transactionPrompt(with text: String) -> Payload {
-        let jsonTemplate = """
-        Analyze the following user input and return a JSON object representing the transaction.
-        The JSON object should have the following fields: "amount" (number), "type" (string, "expense" or "income"), "category" (string), "account" (string), "paymentMethod" (string), "note" (string), "confidence" (number, 0-1), and "date" (string, ISO8601 format).
-        User input: "\(text)"
-        """
-        return Payload(
-            contents: [.init(parts: [.init(text: jsonTemplate)])],
-            generationConfig: .init(responseMimeType: "application/json")
-        )
-    }
-
-    func analysisPrompt(question: String, dataset: String) -> Payload {
-        let instruction = """
-        You are a friendly financial assistant. Please provide a specific analysis and suggestions based on the following billing data. Your tone should be empathetic and avoid lecturing.
-        Data: \(dataset)
-        User question: \(question)
-        """
-        return Payload(
-            contents: [.init(parts: [.init(text: instruction)])],
-            generationConfig: .init(responseMimeType: "text/plain")
-        )
     }
 }
 
@@ -207,4 +269,3 @@ extension JSONDecoder {
         return decoder
     }()
 }
-

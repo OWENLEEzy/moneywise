@@ -27,7 +27,7 @@ final class CSVService {
         let header = "date,amount,category,type,note,account,is_ai_generated\n"
         let rows = transactions.map { transaction in
             let dateString = dateFormatter.string(from: transaction.date)
-            let category = transaction.category?.name ?? "未分类"
+            let category = transaction.category?.name ?? "Uncategorized"
             let row = [
                 dateString,
                 "\(transaction.amount)",

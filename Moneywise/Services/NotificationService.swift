@@ -26,8 +26,8 @@ final class NotificationScheduler: NSObject, UNUserNotificationCenterDelegate {
 
     func scheduleGoalReminder(goal: Goal) async {
         let content = UNMutableNotificationContent()
-        content.title = "储蓄目标提醒"
-        content.body = "距离 \(goal.name) 截止还有 \(daysLeft(for: goal)) 天，一起加油！"
+        content.title = "Savings Goal Reminder"
+        content.body = "\(daysLeft(for: goal)) days left for \(goal.name), keep it up!"
         content.sound = .default
 
         var components = Calendar.current.dateComponents([.year, .month, .day], from: goal.deadline)

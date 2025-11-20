@@ -3,11 +3,12 @@ import SwiftUI
 struct FloatingButtonBar: View {
     @Binding var showManualSheet: Bool
     @Binding var showAISheet: Bool
+    @Binding var selectedTab: ContentView.Tab
 
     var body: some View {
         HStack(spacing: 0) {
             Button(action: {
-                // TODO: Navigate to Reports
+                selectedTab = .reports
             }) {
                 VStack(spacing: 6) {
                     Image(systemName: "chart.pie.fill")
@@ -38,7 +39,7 @@ struct FloatingButtonBar: View {
                         .frame(width: 64, height: 64)
                         .shadow(color: Color(red: 0.15, green: 0.65, blue: 0.55).opacity(0.5), radius: 15, x: 0, y: 5)
                     
-                    Image(systemName: "mic.fill")
+                    Image(systemName: "brain")
                         .font(.system(size: 24, weight: .semibold))
                         .foregroundColor(.white)
                 }
@@ -47,7 +48,7 @@ struct FloatingButtonBar: View {
             .frame(maxWidth: .infinity)
             
             Button(action: {
-                // TODO: Navigate to Goals
+                selectedTab = .goals
             }) {
                 VStack(spacing: 6) {
                     Image(systemName: "target")

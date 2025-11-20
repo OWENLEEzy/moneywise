@@ -105,6 +105,8 @@ struct AISmartEntrySheet: View {
     @Environment(\.modelContext) private var context
     
     @StateObject private var viewModel: AISmartEntryViewModel
+    @StateObject private var speechService = SpeechRecognitionService()
+    @State private var showingSpeechPermissionAlert = false
     
     @Binding var toastMessage: String?
     
@@ -138,6 +140,35 @@ struct AISmartEntrySheet: View {
                 HStack {
                     TextField("Just bought a bento box...", text: $viewModel.inputText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
+                        .onChange(of: speechService.transcribedText) { oldValue, newValue in
+                            if !newValue.isEmpty {
+                                viewModel.inputText = newValue
+                            }
+                        }
+                    
+                    Button(action: {
+                        Task {
+                            if speechService.isRecording {
+                                speechService.stopRecording()
+                            } else {
+                                let authorized = await speechService.requestAuthorization()
+                                if authorized {
+                                    do {
+                                        try await speechService.startRecording()
+                                    } catch {
+                                        speechService.errorMessage = error.localizedDescription
+                                    }
+                                } else {
+                                    showingSpeechPermissionAlert = true
+                                }
+                            }
+                        }
+                    }) {
+                        Image(systemName: speechService.isRecording ? "stop.circle.fill" : "mic.circle.fill")
+                            .font(.largeTitle)
+                            .foregroundColor(speechService.isRecording ? .red : .blue)
+                    }
+                    
                     Button(action: {
                         Task {
                             await viewModel.sendMessage(context: context)
@@ -150,7 +181,13 @@ struct AISmartEntrySheet: View {
                 }
                 .padding()
             }
-            .navigationTitle("AI Assistant")
+            .navigationTitle("AI Recording")
+            .navigationBarTitleDisplayMode(.inline)
+            .alert("Microphone Permission Required", isPresented: $showingSpeechPermissionAlert) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                Text("Please enable microphone access in Settings to use voice features.")
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
@@ -190,36 +227,146 @@ struct TransactionConfirmationCard: View {
     @ObservedObject var viewModel: AISmartEntryViewModel
     @Environment(\.modelContext) private var context
     
+    @State private var countdown: Int = 3
+    @State private var timer: Timer?
+    @State private var autoConfirmEnabled: Bool = false
+    
     var body: some View {
-        VStack(alignment: .leading, spacing: 12) {
-            Text("Transaction Confirmation Card")
+        VStack(alignment: .leading, spacing: 16) {
+            Text("Confirm Transaction")
                 .font(.headline)
             
-            Text(transaction.amount, format: .currency(code: "CNY"))
+            // Amount
+            Text(transaction.amount.coinFormatted)
                 .font(.largeTitle)
                 .fontWeight(.bold)
             
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Category: \(transaction.category?.name ?? "N/A")")
-                Text("Account: \(transaction.account)")
-                Text("Time: \(transaction.date.formatted())")
+            // Details
+            VStack(alignment: .leading, spacing: 6) {
+                HStack {
+                    Text("Category:")
+                        .foregroundColor(.secondary)
+                    Text(transaction.category?.name ?? "Uncategorized")
+                }
+                HStack {
+                    Text("Account:")
+                        .foregroundColor(.secondary)
+                    Text(transaction.account)
+                }
+                HStack {
+                    Text("Time:")
+                        .foregroundColor(.secondary)
+                    Text(transaction.date.formatted(date: .abbreviated, time: .shortened))
+                }
+                HStack {
+                    Text("Note:")
+                        .foregroundColor(.secondary)
+                    Text(transaction.note)
+                }
+            }
+            .font(.callout)
+            
+            // Auto-confirm countdown
+            if autoConfirmEnabled && transaction.confidence >= 0.8 {
+                VStack(spacing: 8) {
+                    HStack {
+                        Image(systemName: "clock.fill")
+                            .foregroundColor(.orange)
+                        Text("Auto-confirming in \(countdown)s")
+                            .foregroundColor(.orange)
+                            .font(.subheadline)
+                    }
+                    
+                    ProgressView(value: Double(3 - countdown), total: 3.0)
+                        .tint(.orange)
+                }
+                .padding()
+                .background(Color.orange.opacity(0.1))
+                .cornerRadius(8)
+            } else if transaction.confidence < 0.8 {
+                HStack {
+                    Image(systemName: "exclamationmark.triangle.fill")
+                    // Low confidence, please confirm manually
+                        .foregroundColor(.yellow)
+                    Text("Low confidence, please check details")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                .padding()
+                .background(Color.yellow.opacity(0.1))
+                .cornerRadius(8)
             }
             
-            HStack {
-                Button("Confirm") {
+            // Buttons
+            HStack(spacing: 12) {
+                Button(action: {
+                    stopTimer()
                     viewModel.confirmTransaction(context: context)
+                }) {
+                    HStack {
+                        Image(systemName: "checkmark.circle.fill")
+                        Text("Confirm")
+                    }
+                    .frame(maxWidth: .infinity)
                 }
                 .buttonStyle(.borderedProminent)
                 
-                Button("Edit") {
-                    // TODO: Implement edit functionality
+                if autoConfirmEnabled {
+                    Button(action: {
+                        stopTimer()
+                        autoConfirmEnabled = false
+                    }) {
+                        HStack {
+                            Image(systemName: "xmark.circle")
+                            Text("Cancel Timer")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
+                } else {
+                    Button(action: {
+                        // TODO: Implement edit functionality
+                    }) {
+                        HStack {
+                            Image(systemName: "pencil")
+                            Text("Edit")
+                        }
+                        .frame(maxWidth: .infinity)
+                    }
+                    .buttonStyle(.bordered)
                 }
-                .buttonStyle(.bordered)
             }
         }
         .padding()
-        .background(Color.green.opacity(0.2))
+        .background(Color(.systemBackground))
         .cornerRadius(16)
-        .padding(.horizontal)
+        .shadow(radius: 5)
+        .onAppear {
+            if transaction.confidence >= 0.8 {
+                startCountdown()
+            }
+        }
+        .onDisappear {
+            stopTimer()
+        }
+    }
+    
+    private func startCountdown() {
+        autoConfirmEnabled = true
+        countdown = 3
+        
+        timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            if countdown > 0 {
+                countdown -= 1
+            } else {
+                stopTimer()
+                viewModel.confirmTransaction(context: context)
+            }
+        }
+    }
+    
+    private func stopTimer() {
+        timer?.invalidate()
+        timer = nil
     }
 }

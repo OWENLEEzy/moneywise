@@ -14,35 +14,31 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
                 HomeView(showManualSheet: $showingManualSheet, showAISheet: $showingAISheet, toastMessage: $toastMessage)
-                    .tabItem { Label("首页", systemImage: "house.fill") }
+                    .tabItem { Label("Home", systemImage: "house.fill") }
                     .tag(Tab.home)
 
                 AssistantView()
-                    .tabItem { Label("助手", systemImage: "bubble.left.and.right.fill") }
+                    .tabItem { Label("Assistant", systemImage: "bubble.left.and.right.fill") }
                     .tag(Tab.assistant)
 
                 TransactionsView()
-                    .tabItem { Label("明细", systemImage: "list.bullet.rectangle") }
+                    .tabItem { Label("Transactions", systemImage: "list.bullet.rectangle") }
                     .tag(Tab.transactions)
 
-                ReportsView()
-                    .tabItem { Label("报表", systemImage: "chart.pie.fill") }
+                ReportsView(selectedTab: $selectedTab)
+                    .tabItem { Label("Reports", systemImage: "chart.pie.fill") }
                     .tag(Tab.reports)
 
-                GoalsView()
-                    .tabItem { Label("目标", systemImage: "target") }
+                GoalsView(selectedTab: $selectedTab)
+                    .tabItem { Label("Goals", systemImage: "target") }
                     .tag(Tab.goals)
-
-                SettingsView()
-                    .tabItem { Label("设置", systemImage: "gearshape.fill") }
-                    .tag(Tab.settings)
             }
             .onReceive(NotificationCenter.default.publisher(for: .showAssistant)) { _ in
                 selectedTab = .assistant
             }
 
             if selectedTab != .assistant {
-                FloatingButtonBar(showManualSheet: $showingManualSheet, showAISheet: $showingAISheet)
+                FloatingButtonBar(showManualSheet: $showingManualSheet, showAISheet: $showingAISheet, selectedTab: $selectedTab)
             }
         }
         .sheet(isPresented: $showingManualSheet) {
@@ -77,7 +73,11 @@ struct ContentView: View {
         case .goal:
             selectedTab = .goals
         case .settings:
-            selectedTab = .settings
+            // Settings is now accessed from Home, but we can't easily switch to it via tab.
+            // For now, we'll switch to Home, and Home handles showing settings if needed?
+            // Or we can just ignore deep link for settings or handle it differently.
+            // Let's switch to home for now.
+            selectedTab = .home
         }
         await MainActor.run {
             deeplinkRouter.pendingRoute = nil
@@ -87,6 +87,6 @@ struct ContentView: View {
 
 extension ContentView {
     enum Tab: Hashable {
-        case home, transactions, reports, goals, assistant, settings
+        case home, transactions, reports, goals, assistant
     }
 }

@@ -51,6 +51,7 @@ struct HomeView: View {
     @Query private var goals: [Goal]
     
     @StateObject private var viewModel = HomeViewModel()
+    @State private var showSettings = false
     
     var body: some View {
         NavigationStack {
@@ -69,23 +70,14 @@ struct HomeView: View {
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
-                    HStack(spacing: 16) {
-                        Button(action: {
-                            // TODO: Notifications action
-                        }) {
-                            Image(systemName: "bell.fill")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.gray)
-                        }
-                        Button(action: {
-                            // TODO: Profile action
-                        }) {
-                            Image(systemName: "person.circle.fill")
-                                .font(.system(size: 18, weight: .medium))
-                                .foregroundColor(.gray)
-                        }
+                    Button(action: { showSettings = true }) {
+                        Image(systemName: "gearshape.fill")
+                            .foregroundColor(.primary)
                     }
                 }
+            }
+            .sheet(isPresented: $showSettings) {
+                SettingsView()
             }
             .onAppear {
                 viewModel.update(with: transactions)
@@ -113,7 +105,7 @@ struct HeroCard: View {
             }
             
             VStack(alignment: .leading, spacing: 8) {
-                Text(summary.remainingBudget, format: .currency(code: "CNY"))
+                Text(summary.remainingBudget.coinFormatted)
                     .font(.system(size: 42, weight: .bold))
                     .foregroundColor(.white)
                 
@@ -152,7 +144,7 @@ struct HeroCard: View {
                     Text("Spent")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
-                    Text(summary.expenses, format: .currency(code: "CNY"))
+                    Text(summary.expenses.coinFormatted)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                 }
@@ -161,7 +153,7 @@ struct HeroCard: View {
                     Text("Income")
                         .font(.system(size: 12, weight: .medium))
                         .foregroundColor(.white.opacity(0.7))
-                    Text(summary.income, format: .currency(code: "CNY"))
+                    Text(summary.income.coinFormatted)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white)
                 }
@@ -210,7 +202,12 @@ struct GoalsTicker: View {
                     }
                 } else {
                     ForEach(goals) { goal in
-                        GoalProgressRow(goal: goal)
+                        NavigationLink {
+                            GoalDetailView(goal: goal)
+                        } label: {
+                            GoalProgressRow(goal: goal)
+                        }
+                        .buttonStyle(PlainButtonStyle())
                     }
                 }
             }

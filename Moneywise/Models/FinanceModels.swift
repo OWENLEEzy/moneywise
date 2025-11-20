@@ -8,8 +8,8 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable {
     var id: String { rawValue }
     var localizedTitle: String {
         switch self {
-        case .expense: return "支出"
-        case .income: return "收入"
+        case .expense: return "Expense"
+        case .income: return "Income"
         }
     }
 }
@@ -70,11 +70,11 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable {
     }
 
     static let defaultCategories: [SpendingCategory] = [
-        SpendingCategory(name: "餐饮", icon: "fork.knife", colorHex: "#F97316", type: .expense),
-        SpendingCategory(name: "出行", icon: "car.fill", colorHex: "#3B82F6", type: .expense),
-        SpendingCategory(name: "购物", icon: "bag.fill", colorHex: "#EC4899", type: .expense),
-        SpendingCategory(name: "数码", icon: "iphone.gen3", colorHex: "#8B5CF6", type: .expense),
-        SpendingCategory(name: "收入", icon: "creditcard.fill", colorHex: "#22C55E", type: .income)
+        SpendingCategory(name: "Food", icon: "fork.knife", colorHex: "#F97316", type: .expense),
+        SpendingCategory(name: "Transport", icon: "car.fill", colorHex: "#3B82F6", type: .expense),
+        SpendingCategory(name: "Shopping", icon: "bag.fill", colorHex: "#EC4899", type: .expense),
+        SpendingCategory(name: "Digital", icon: "iphone.gen3", colorHex: "#8B5CF6", type: .expense),
+        SpendingCategory(name: "Income", icon: "creditcard.fill", colorHex: "#22C55E", type: .income)
     ]
 }
 
@@ -145,8 +145,8 @@ enum ReminderType: String, Codable, Identifiable, CaseIterable {
     var id: String { rawValue }
     var copy: String {
         switch self {
-        case .dailyLog: return "每日记账提醒"
-        case .savingGoal: return "储蓄目标提醒"
+        case .dailyLog: return "Daily Log Reminder"
+        case .savingGoal: return "Savings Goal Reminder"
         }
     }
 }
@@ -171,3 +171,36 @@ enum ReminderType: String, Codable, Identifiable, CaseIterable {
     }
 }
 
+
+@Model final class AIInsight {
+    enum InsightType: String, Codable {
+        case weekly
+        case monthly
+    }
+
+    @Attribute(.unique) var id: UUID
+    var type: InsightType
+    var startDate: Date
+    var endDate: Date
+    var summary: String
+    var consumptionInsights: [String]
+    var generatedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        type: InsightType,
+        startDate: Date,
+        endDate: Date,
+        summary: String,
+        consumptionInsights: [String],
+        generatedAt: Date = .now
+    ) {
+        self.id = id
+        self.type = type
+        self.startDate = startDate
+        self.endDate = endDate
+        self.summary = summary
+        self.consumptionInsights = consumptionInsights
+        self.generatedAt = generatedAt
+    }
+}

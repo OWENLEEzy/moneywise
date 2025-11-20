@@ -2,7 +2,9 @@ import SwiftUI
 import SwiftData
 
 struct GoalsView: View {
+    @Binding var selectedTab: ContentView.Tab
     @Query private var goals: [Goal]
+    @State private var showAddGoal = false
     
     var body: some View {
         NavigationStack {
@@ -21,11 +23,20 @@ struct GoalsView: View {
             }
             .navigationTitle("Goals")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Add Goal") {
-                        // TODO: Implement add goal functionality
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button(action: { selectedTab = .home }) {
+                        Image(systemName: "chevron.left")
+                        Text("Back")
                     }
                 }
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button(action: { showAddGoal = true }) {
+                        Image(systemName: "plus")
+                    }
+                }
+            }
+            .sheet(isPresented: $showAddGoal) {
+                AddGoalSheet()
             }
         }
     }
@@ -33,6 +44,7 @@ struct GoalsView: View {
 
 struct GoalDetailView: View {
     @Bindable var goal: Goal
+    @State private var showAddFunds = false
     
     var body: some View {
         VStack(spacing: 24) {
@@ -47,12 +59,12 @@ struct GoalDetailView: View {
                 HStack {
                     Text("Target amount")
                     Spacer()
-                    Text(goal.targetAmount, format: .currency(code: "CNY"))
+                    Text(goal.targetAmount.coinFormatted)
                 }
                 HStack {
                     Text("Saved")
                     Spacer()
-                    Text(goal.currentAmount, format: .currency(code: "CNY"))
+                    Text(goal.currentAmount.coinFormatted)
                         .foregroundColor(.green)
                 }
                 Text("Left to reach goal")
@@ -69,7 +81,7 @@ struct GoalDetailView: View {
                 .foregroundColor(.secondary)
             
             Button("Add Funds") {
-                // TODO: Implement add funds functionality
+                showAddFunds = true
             }
             .buttonStyle(.borderedProminent)
             .tint(.green)
@@ -79,6 +91,9 @@ struct GoalDetailView: View {
         }
         .navigationTitle(goal.name)
         .navigationBarTitleDisplayMode(.inline)
+        .sheet(isPresented: $showAddFunds) {
+            AddFundsSheet(goal: goal)
+        }
     }
 }
 
