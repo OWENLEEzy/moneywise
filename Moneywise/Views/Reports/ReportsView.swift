@@ -10,21 +10,27 @@ struct ReportsView: View {
     @Query(sort: \Transaction.date, order: .reverse) private var transactions: [Transaction]
     @Query(sort: \AIInsight.generatedAt, order: .reverse) private var insights: [AIInsight]
     
-    @State private var showingAIChat = false
-    @State private var selectedPeriod: AIInsight.InsightType = .monthly
+    @State private var selectedVisualPeriod: VisualPeriod = .thisMonth
     @State private var isGenerating = false
     @State private var errorMessage: String?
+    @State private var showingAIChatSheet = false
     
-    var currentInsight: AIInsight? {
-        insights.first { $0.type == selectedPeriod }
+    enum VisualPeriod: String, CaseIterable {
+        case thisWeek = "This Week"
+        case thisMonth = "This Month"
     }
     
-    var filteredTransactions: [Transaction] {
+    var currentInsight: AIInsight? {
+        // AI Analysis always uses monthly data
+        insights.first { $0.type == .monthly }
+    }
+    
+    var filteredTransactionsForVisual: [Transaction] {
         let calendar = Calendar.current
         let now = Date()
         
         return transactions.filter { transaction in
-            if selectedPeriod == .weekly {
+            if selectedVisualPeriod == .thisWeek {
                 let weekStart = calendar.date(byAdding: .day, value: -7, to: now)!
                 return transaction.date >= weekStart
             } else {
@@ -34,102 +40,225 @@ struct ReportsView: View {
         }
     }
     
+    var monthlyTransactions: [Transaction] {
+        let calendar = Calendar.current
+        let now = Date()
+        let monthStart = calendar.date(from: calendar.dateComponents([.year, .month], from: now))!
+        return transactions.filter { $0.date >= monthStart }
+    }
+    
     var body: some View {
         NavigationStack {
             ScrollView {
                 VStack(spacing: 24) {
-                    // Period Selector
-                    Picker("Period", selection: $selectedPeriod) {
-                        Text("This Month").tag(AIInsight.InsightType.monthly)
-                        Text("This Week").tag(AIInsight.InsightType.weekly)
-                    }
-                    .pickerStyle(.segmented)
-                    
-                    if filteredTransactions.isEmpty {
-                        VStack(spacing: 16) {
-                            Image(systemName: "chart.bar.xaxis")
-                                .font(.system(size: 48))
-                                .foregroundColor(.secondary)
-                            Text("AI currently doesn't have enough data")
-                                .font(.headline)
-                                .foregroundColor(.secondary)
-                            Text("Start adding transactions to see insights here.")
-                                .font(.subheadline)
-                                .foregroundColor(.secondary)
-                                .multilineTextAlignment(.center)
-                        }
-                        .padding(.vertical, 40)
-                    } else {
-                        // AI Summary Card
-                        if let insight = currentInsight {
-                            VStack(alignment: .leading, spacing: 12) {
-                                HStack {
-                                    Text(selectedPeriod == .monthly ? "Monthly Summary" : "Weekly Summary")
-                                        .font(.headline)
-                                    Spacer()
-                                    if isGenerating {
-                                        ProgressView()
-                                            .scaleEffect(0.8)
-                                    } else {
-                                        Button(action: generateInsights) {
-                                            Image(systemName: "arrow.clockwise")
-                                                .font(.caption)
-                                        }
+                    // AI Analysis Section
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("AI Analysis")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Spacer()
+                            if !monthlyTransactions.isEmpty, currentInsight != nil {
+                                Button(action: generateInsights) {
+                                    HStack(spacing: 6) {
+                                        Image(systemName: "arrow.clockwise")
+                                            .font(.system(size: 14, weight: .semibold))
+                                        Text("Refresh")
+                                            .font(.system(size: 14, weight: .medium))
                                     }
+                                    .foregroundColor(.white)
+                                    .padding(.horizontal, 12)
+                                    .padding(.vertical, 8)
+                                    .background(Color(red: 0.2, green: 0.8, blue: 0.6))
+                                    .cornerRadius(8)
                                 }
-                                
-                                Text(insight.summary)
-                                    .font(.subheadline)
-                                    .foregroundColor(.primary)
-                                
-                                Text("Last updated: \(insight.generatedAt.formatted(date: .abbreviated, time: .shortened))")
-                                    .font(.caption2)
-                                    .foregroundColor(.secondary)
+                                .disabled(isGenerating)
+                                .opacity(isGenerating ? 0.6 : 1.0)
                             }
-                            .padding()
-                            .background(Color.orange.opacity(0.1))
+                        }
+                        
+                        if monthlyTransactions.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "brain")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.secondary)
+                                Text("AI currently doesn't have enough data")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                                Text("Start adding transactions to see insights here.")
+                                    .font(.subheadline)
+                                    .foregroundColor(.secondary)
+                                    .multilineTextAlignment(.center)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                            .background(Color(UIColor.secondarySystemBackground))
                             .cornerRadius(12)
                         } else {
-                            Button(action: generateInsights) {
-                                HStack {
-                                    if isGenerating {
-                                        ProgressView()
-                                            .padding(.trailing, 8)
+                            if let insight = currentInsight {
+                                // Loading overlay during refresh
+                                ZStack {
+                                    VStack(alignment: .leading, spacing: 16) {
+                                        // Summary Card
+                                        VStack(alignment: .leading, spacing: 12) {
+                                            HStack {
+                                                VStack(alignment: .leading, spacing: 4) {
+                                                    Text("Monthly Summary")
+                                                        .font(.headline)
+                                                        .foregroundColor(.primary)
+                                                    
+                                                    Text("Updated: \(insight.generatedAt.formatted(date: .abbreviated, time: .shortened))")
+                                                        .font(.caption)
+                                                        .foregroundColor(.secondary)
+                                                }
+                                                Spacer()
+                                            }
+                                            
+                                            Divider()
+                                            
+                                            Text(insight.summary)
+                                                .font(.body)
+                                                .foregroundColor(.primary)
+                                                .lineSpacing(4)
+                                        }
+                                        .padding()
+                                        .background(
+                                            LinearGradient(
+                                                gradient: Gradient(colors: [
+                                                    Color.orange.opacity(0.15),
+                                                    Color.orange.opacity(0.08)
+                                                ]),
+                                                startPoint: .topLeading,
+                                                endPoint: .bottomTrailing
+                                            )
+                                        )
+                                        .cornerRadius(12)
+                                        .shadow(color: Color.black.opacity(0.05), radius: 4, x: 0, y: 2)
+                                        
+                                        // Insights
+                                        if !insight.consumptionInsights.isEmpty {
+                                            VStack(alignment: .leading, spacing: 12) {
+                                                Text("Key Insights")
+                                                    .font(.headline)
+                                                    .foregroundColor(.primary)
+                                                
+                                                ForEach(insight.consumptionInsights, id: \.self) { item in
+                                                    HStack(alignment: .top, spacing: 12) {
+                                                        Image(systemName: "lightbulb.fill")
+                                                            .foregroundColor(.yellow)
+                                                            .font(.system(size: 16))
+                                                            .padding(.top, 2)
+                                                        Text(item)
+                                                            .font(.subheadline)
+                                                            .foregroundColor(.primary)
+                                                            .lineSpacing(2)
+                                                    }
+                                                    .padding()
+                                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                                    .background(Color(UIColor.systemBackground))
+                                                    .cornerRadius(10)
+                                                    .shadow(color: .black.opacity(0.05), radius: 3, x: 0, y: 1)
+                                                }
+                                            }
+                                        }
                                     }
-                                    Text(isGenerating ? "Analyzing..." : "Generate AI Insights")
+                                    .blur(radius: isGenerating ? 3 : 0)
+                                    .disabled(isGenerating)
+                                    
+                                    // Loading overlay
+                                    if isGenerating {
+                                        VStack(spacing: 16) {
+                                            ProgressView()
+                                                .scaleEffect(1.5)
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .blue))
+                                            Text("Analyzing your transactions...")
+                                                .font(.subheadline)
+                                                .foregroundColor(.secondary)
+                                        }
+                                        .frame(maxWidth: .infinity, maxHeight: .infinity)
+                                        .background(Color(UIColor.systemBackground).opacity(0.8))
+                                        .cornerRadius(12)
+                                    }
                                 }
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(Color.blue.opacity(0.1))
-                                .cornerRadius(12)
+                            } else {
+                                // Initial generation button
+                                Button(action: generateInsights) {
+                                    HStack(spacing: 8) {
+                                        if isGenerating {
+                                            ProgressView()
+                                                .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                .scaleEffect(0.8)
+                                        } else {
+                                            Image(systemName: "sparkles")
+                                                .font(.system(size: 16))
+                                        }
+                                        Text(isGenerating ? "Analyzing..." : "Generate AI Insights")
+                                            .font(.system(size: 14, weight: .semibold))
+                                    }
+                                    .foregroundColor(.white)
+                                    .frame(maxWidth: .infinity)
+                                    .padding(.vertical, 12)
+                                    .background(
+                                        LinearGradient(
+                                            gradient: Gradient(colors: [
+                                                Color(red: 0.2, green: 0.8, blue: 0.6),
+                                                Color(red: 0.2, green: 0.8, blue: 0.6).opacity(0.8)
+                                            ]),
+                                            startPoint: .leading,
+                                            endPoint: .trailing
+                                        )
+                                    )
+                                    .cornerRadius(10)
+                                    .shadow(color: Color(red: 0.2, green: 0.8, blue: 0.6).opacity(0.3), radius: 6, x: 0, y: 3)
+                                }
+                                .padding(.horizontal, 40) // Add horizontal padding to shrink width visually
+                                .disabled(isGenerating)
                             }
-                            .disabled(isGenerating)
+                        }
+                    }
+                    
+                    Divider()
+                        .padding(.vertical, 8)
+                    
+                    // Visual Analysis Section
+                    VStack(alignment: .leading, spacing: 16) {
+                        HStack {
+                            Text("Visual analysis")
+                                .font(.title2)
+                                .fontWeight(.bold)
+                            Spacer()
                         }
                         
-                        SpendingTrendChart(transactions: filteredTransactions, period: selectedPeriod)
-                        
-                        // Insights
-                        if let insight = currentInsight, !insight.consumptionInsights.isEmpty {
-                            VStack(alignment: .leading, spacing: 16) {
-                                Text("Consumption Insights")
-                                    .font(.headline)
-                                
-                                ForEach(insight.consumptionInsights, id: \.self) { item in
-                                    HStack(alignment: .top) {
-                                        Image(systemName: "lightbulb.fill")
-                                            .foregroundColor(.yellow)
-                                            .font(.caption)
-                                            .padding(.top, 4)
-                                        Text(item)
-                                            .font(.subheadline)
-                                    }
-                                    .padding()
-                                    .frame(maxWidth: .infinity, alignment: .leading)
-                                    .background(Color(UIColor.systemBackground))
-                                    .cornerRadius(12)
-                                    .shadow(color: .black.opacity(0.05), radius: 2, x: 0, y: 1)
-                                }
+                        // Time Period Selector
+                        Picker("Period", selection: $selectedVisualPeriod) {
+                            ForEach(VisualPeriod.allCases, id: \.self) { period in
+                                Text(period.rawValue).tag(period)
                             }
+                        }
+                        .pickerStyle(.segmented)
+                        
+                        if filteredTransactionsForVisual.isEmpty {
+                            VStack(spacing: 16) {
+                                Image(systemName: "chart.bar.xaxis")
+                                    .font(.system(size: 48))
+                                    .foregroundColor(.secondary)
+                                Text("No data for this period")
+                                    .font(.headline)
+                                    .foregroundColor(.secondary)
+                            }
+                            .frame(maxWidth: .infinity)
+                            .padding(.vertical, 40)
+                            .background(Color(UIColor.secondarySystemBackground))
+                            .cornerRadius(12)
+                        } else {
+                            SpendingTrendChart(
+                                transactions: filteredTransactionsForVisual,
+                                period: selectedVisualPeriod == .thisWeek ? .weekly : .monthly
+                            )
+                            
+                            ExpenseRatioPieChart(
+                                transactions: filteredTransactionsForVisual
+                            )
                         }
                     }
                 }
@@ -151,27 +280,20 @@ struct ReportsView: View {
                 
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        showingAIChat = true
+                        showingAIChatSheet = true
                     }) {
-                        Image(systemName: "bubble.left.and.bubble.right")
-                            .foregroundColor(.blue)
+                        Image(systemName: "message.fill")
                     }
                 }
             }
-            .sheet(isPresented: $showingAIChat) {
+            .sheet(isPresented: $showingAIChatSheet) {
                 ReportAIChatView()
-            }
-            .onChange(of: selectedPeriod) { _, _ in
-                // Auto-generate if no insight exists for this period and we have data
-                if currentInsight == nil && !filteredTransactions.isEmpty {
-                    generateInsights()
-                }
             }
         }
     }
     
     private func generateInsights() {
-        guard !isGenerating, !filteredTransactions.isEmpty else { return }
+        guard !isGenerating, !monthlyTransactions.isEmpty else { return }
         
         isGenerating = true
         Task {
@@ -180,20 +302,19 @@ struct ReportsView: View {
                     KeychainService().value(for: .geminiAPIKey)
                 })
                 
-                let periodName = selectedPeriod == .monthly ? "current month" : "last 7 days"
                 let result = try await aiService.generateInsights(
-                    transactions: filteredTransactions,
-                    period: periodName,
+                    transactions: monthlyTransactions,
+                    period: "current month",
                     context: context
                 )
                 
-                // Delete old insight for this period
+                // Delete old insight
                 if let oldInsight = currentInsight {
                     context.delete(oldInsight)
                 }
                 
                 let newInsight = AIInsight(
-                    type: selectedPeriod,
+                    type: .monthly,
                     startDate: Date(), // Simplified for now
                     endDate: Date(),
                     summary: result.summary,
@@ -217,52 +338,56 @@ struct ReportAIChatView: View {
     @State private var inputText = ""
     
     var body: some View {
-        NavigationStack {
-            VStack {
-                ScrollView {
-                    VStack(alignment: .leading, spacing: 16) {
-                        ForEach(chatViewModel.messages) { msg in
-                            MessageBubble(message: msg)
-                        }
-                        
-                        if chatViewModel.isLoading {
-                            HStack {
-                                ProgressView()
-                                Text("AI analyzing...")
-                                    .foregroundColor(.secondary)
-                            }
-                            .padding()
-                        }
-                    }
-                    .padding()
+        VStack(spacing: 0) {
+            // Header
+            HStack {
+                Text("AI Report Assistant")
+                    .font(.headline)
+                Spacer()
+                Button("Done") {
+                    dismiss()
                 }
-                
-                HStack {
-                    TextField("Ask about your spending...", text: $inputText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                    
-                    Button(action: {
-                        Task {
-                            await chatViewModel.askQuestion(inputText, context: context)
-                            inputText = ""
-                        }
-                    }) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.largeTitle)
+            }
+            .padding()
+            
+            Divider()
+            
+            ScrollView {
+                VStack(alignment: .leading, spacing: 16) {
+                    ForEach(chatViewModel.messages) { msg in
+                        MessageBubble(message: msg)
                     }
-                    .disabled(inputText.isEmpty || chatViewModel.isLoading)
+                    
+                    if chatViewModel.isLoading {
+                        HStack {
+                            ProgressView()
+                            Text("AI analyzing...")
+                                .foregroundColor(.secondary)
+                        }
+                        .padding()
+                    }
                 }
                 .padding()
             }
-            .navigationTitle("AI Report Assistant")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button("Done") {
-                        dismiss()
+            
+            Divider()
+            
+            HStack {
+                TextField("Ask about your spending...", text: $inputText)
+                    .textFieldStyle(RoundedBorderTextFieldStyle())
+                
+                Button(action: {
+                    Task {
+                        await chatViewModel.askQuestion(inputText, context: context)
+                        inputText = ""
                     }
+                }) {
+                    Image(systemName: "arrow.up.circle.fill")
+                        .font(.largeTitle)
                 }
+                .disabled(inputText.isEmpty || chatViewModel.isLoading)
             }
+            .padding()
         }
     }
 }
@@ -406,5 +531,108 @@ struct SpendingData: Identifiable {
     let id = UUID()
     let day: String
     let value: Double
+}
+
+struct ExpenseRatioPieChart: View {
+    let transactions: [Transaction]
+    
+    struct CategoryData: Identifiable {
+        let id = UUID()
+        let name: String
+        let amount: Double
+        let color: Color
+    }
+    
+    var chartData: [CategoryData] {
+        let expenses = transactions.filter { $0.type == .expense }
+        let totalExpense = expenses.reduce(0.0) { $0 + Double(truncating: $1.amount as NSNumber) }
+        
+        guard totalExpense > 0 else { return [] }
+        
+        let grouped = Dictionary(grouping: expenses) { $0.category?.name ?? "Uncategorized" }
+        
+        let sortedCategories = grouped.map { (key, value) -> (String, Double) in
+            let categoryTotal = value.reduce(0.0) { $0 + Double(truncating: $1.amount as NSNumber) }
+            return (key, categoryTotal)
+        }.sorted { $0.1 > $1.1 }
+        
+        // Base color: Cyan-Green (App Theme)
+        // Color(red: 0.2, green: 0.8, blue: 0.6)
+        // We will adjust opacity/brightness based on rank or percentage
+        
+        return sortedCategories.enumerated().map { index, item in
+            // Calculate opacity based on value relative to total (or just rank for distinctness)
+            // Strategy: Darker for larger values.
+            // Max opacity 1.0, Min opacity 0.3
+            let ratio = item.1 / totalExpense
+            // Using opacity is simple but might overlap. Using saturation/brightness is better.
+            // Let's use the base color and adjust opacity for the "monochromatic" feel requested.
+            // "占比越多颜色越深" -> Higher ratio = Higher Opacity/Saturation
+            
+            let opacity = 0.3 + (0.7 * (item.1 / sortedCategories[0].1)) // Relative to largest item
+            
+            return CategoryData(
+                name: item.0,
+                amount: item.1,
+                color: Color(red: 0.2, green: 0.8, blue: 0.6).opacity(opacity)
+            )
+        }
+    }
+    
+    var body: some View {
+        VStack(alignment: .leading, spacing: 12) {
+            Text("Expense Ratio")
+                .font(.headline)
+            
+            if chartData.isEmpty {
+                Text("No expense data available")
+                    .foregroundColor(.secondary)
+                    .frame(height: 150)
+                    .frame(maxWidth: .infinity)
+            } else {
+                HStack(spacing: 20) {
+                    // Pie Chart
+                    Chart(chartData) { item in
+                        SectorMark(
+                            angle: .value("Amount", item.amount),
+                            innerRadius: .ratio(0.5),
+                            angularInset: 2
+                        )
+                        .foregroundStyle(item.color)
+                        .cornerRadius(4)
+                    }
+                    .frame(height: 150)
+                    
+                    // Legend
+                    ScrollView {
+                        VStack(alignment: .leading, spacing: 10) {
+                            ForEach(chartData) { item in
+                                HStack(spacing: 8) {
+                                    Circle()
+                                        .fill(item.color)
+                                        .frame(width: 10, height: 10)
+                                    
+                                    VStack(alignment: .leading, spacing: 0) {
+                                        Text(item.name)
+                                            .font(.caption)
+                                            .foregroundColor(.secondary)
+                                            .lineLimit(1)
+                                        Text(Decimal(item.amount).coinFormatted)
+                                            .font(.caption)
+                                            .fontWeight(.semibold)
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .frame(maxHeight: 150)
+                }
+                .padding(.vertical, 8)
+            }
+        }
+        .padding()
+        .background(Color(UIColor.systemBackground))
+        .cornerRadius(12)
+    }
 }
 

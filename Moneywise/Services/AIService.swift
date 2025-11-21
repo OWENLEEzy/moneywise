@@ -2,7 +2,6 @@ import Foundation
 import SwiftData
 import Combine
 
-@MainActor
 final class AIService {
     private let gemini: GeminiService
     private let apiKeyProvider: () -> String?
@@ -12,6 +11,7 @@ final class AIService {
         self.apiKeyProvider = apiKeyProvider
     }
 
+    @MainActor
     func parse(text: String, context: ModelContext) async throws -> Transaction {
         let parsed = try await gemini.parseTransaction(prompt: text, apiKey: apiKeyProvider())
         let category = try context.category(named: parsed.category, type: parsed.type)
@@ -29,6 +29,7 @@ final class AIService {
         )
     }
 
+    @MainActor
     func analyze(question: String, context: ModelContext) async throws -> String {
         let transactions = try context.fetch(FetchDescriptor<Transaction>())
         let dataset = transactions.map { "\($0.date): \($0.note) - \($0.amount)" }.joined(separator: "\n")
@@ -36,6 +37,7 @@ final class AIService {
         return response.text
     }
 
+    @MainActor
     func generateInsights(transactions: [Transaction], period: String, context: ModelContext) async throws -> GeminiInsightResponse {
         let apiKey = apiKeyProvider()
         guard let apiKey else { throw AIServiceError.missingAPIKey }
@@ -61,15 +63,20 @@ final class AIService {
 
 final class GeminiService {
     private let session: URLSession
-    // Switching to stable Gemini 1.5 Flash model to ensure reliability
-    private let baseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent")!
+    // Using stable Gemini 1.5 Flash model
+    private let baseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent")!
 
     init(session: URLSession = .shared) {
         self.session = session
     }
 
     func parseTransaction(prompt: String, apiKey: String?) async throws -> GeminiResponse {
-        guard let apiKey else { throw AIServiceError.missingAPIKey }
+        print("🔑 [AI Debug] Checking API Key... Has key: \(apiKey != nil), Key length: \(apiKey?.count ?? 0)")
+        guard let apiKey else { 
+            print("❌ [AI Debug] API Key is missing!")
+            throw AIServiceError.missingAPIKey 
+        }
+        
         let payload = GeminiPromptBuilder().transactionPrompt(with: prompt)
         let data = try await send(payload: payload, apiKey: apiKey)
         do {
@@ -114,26 +121,36 @@ final class GeminiService {
                 throw AIServiceError.invalidResponse
             }
             
-            switch httpResponse.statusCode {
-            case 200..<300:
+            if (200..<300).contains(httpResponse.statusCode) {
                 return data
+            }
+            
+            // Parse error details from Google
+            var errorMessage = "Unknown Error"
+            if let errorJson = try? JSONDecoder().decode(GoogleErrorResponse.self, from: data) {
+                errorMessage = errorJson.error.message
+            } else if let errorText = String(data: data, encoding: .utf8) {
+                errorMessage = errorText
+            }
+            
+            print("❌ [AI Debug] API Error \(httpResponse.statusCode): \(errorMessage)")
+            
+            switch httpResponse.statusCode {
             case 400:
-                if let errorText = String(data: data, encoding: .utf8),
-                   errorText.contains("API_KEY_INVALID") || errorText.contains("INVALID_ARGUMENT") {
+                if errorMessage.contains("API_KEY_INVALID") {
                     throw AIServiceError.invalidAPIKey
                 }
-                throw AIServiceError.clientError(400, "Bad Request")
+                throw AIServiceError.clientError(400, errorMessage)
             case 401, 403:
                 throw AIServiceError.invalidAPIKey
+            case 404:
+                throw AIServiceError.clientError(404, "Model not found or invalid endpoint. \(errorMessage)")
             case 500..<600:
                 throw AIServiceError.serverError(httpResponse.statusCode)
+            case 429:
+                throw AIServiceError.clientError(429, "Rate limit exceeded. Please try again later.")
             default:
-                let statusCode = httpResponse.statusCode
-                print("API Error: \(statusCode)")
-                if let errorText = String(data: data, encoding: .utf8) {
-                    print("Error details: \(errorText)")
-                }
-                throw AIServiceError.clientError(statusCode, "Unexpected Error")
+                throw AIServiceError.clientError(httpResponse.statusCode, errorMessage)
             }
         } catch let error as URLError {
             switch error.code {
@@ -150,6 +167,16 @@ final class GeminiService {
             throw error
         }
     }
+}
+
+// Helper for parsing Google errors
+struct GoogleErrorResponse: Decodable {
+    struct ErrorDetail: Decodable {
+        let code: Int
+        let message: String
+        let status: String
+    }
+    let error: ErrorDetail
 }
 
 struct GeminiPromptBuilder {

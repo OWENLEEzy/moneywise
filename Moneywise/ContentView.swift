@@ -14,25 +14,31 @@ struct ContentView: View {
         ZStack(alignment: .bottom) {
             TabView(selection: $selectedTab) {
                 HomeView(showManualSheet: $showingManualSheet, showAISheet: $showingAISheet, toastMessage: $toastMessage)
+                    .toolbar(.hidden, for: .tabBar)
                     .tabItem { Label("Home", systemImage: "house.fill") }
                     .tag(Tab.home)
 
                 AssistantView()
+                    .toolbar(.hidden, for: .tabBar)
                     .tabItem { Label("Assistant", systemImage: "bubble.left.and.right.fill") }
                     .tag(Tab.assistant)
 
                 TransactionsView()
+                    .toolbar(.hidden, for: .tabBar)
                     .tabItem { Label("Transactions", systemImage: "list.bullet.rectangle") }
                     .tag(Tab.transactions)
 
                 ReportsView(selectedTab: $selectedTab)
+                    .toolbar(.hidden, for: .tabBar)
                     .tabItem { Label("Reports", systemImage: "chart.pie.fill") }
                     .tag(Tab.reports)
 
                 GoalsView(selectedTab: $selectedTab)
+                    .toolbar(.hidden, for: .tabBar)
                     .tabItem { Label("Goals", systemImage: "target") }
                     .tag(Tab.goals)
             }
+            .toolbar(.hidden, for: .tabBar)
             .onReceive(NotificationCenter.default.publisher(for: .showAssistant)) { _ in
                 selectedTab = .assistant
             }
@@ -41,6 +47,7 @@ struct ContentView: View {
                 FloatingButtonBar(showManualSheet: $showingManualSheet, showAISheet: $showingAISheet, selectedTab: $selectedTab)
             }
         }
+        .ignoresSafeArea(.keyboard)
         .sheet(isPresented: $showingManualSheet) {
             ManualEntrySheet(toastMessage: $toastMessage)
                 .modelContext(context)

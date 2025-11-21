@@ -7,6 +7,7 @@ struct FloatingButtonBar: View {
 
     var body: some View {
         HStack(spacing: 0) {
+            // Reports Button
             Button(action: {
                 selectedTab = .reports
             }) {
@@ -47,6 +48,7 @@ struct FloatingButtonBar: View {
             .offset(y: -20)
             .frame(maxWidth: .infinity)
             
+            // Goals Button
             Button(action: {
                 selectedTab = .goals
             }) {

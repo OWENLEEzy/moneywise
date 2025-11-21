@@ -70,11 +70,20 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable {
     }
 
     static let defaultCategories: [SpendingCategory] = [
-        SpendingCategory(name: "Food", icon: "fork.knife", colorHex: "#F97316", type: .expense),
-        SpendingCategory(name: "Transport", icon: "car.fill", colorHex: "#3B82F6", type: .expense),
-        SpendingCategory(name: "Shopping", icon: "bag.fill", colorHex: "#EC4899", type: .expense),
-        SpendingCategory(name: "Digital", icon: "iphone.gen3", colorHex: "#8B5CF6", type: .expense),
-        SpendingCategory(name: "Income", icon: "creditcard.fill", colorHex: "#22C55E", type: .income)
+        // Expense Categories
+        SpendingCategory(name: "Food & Dining", icon: "🍔", colorHex: "#F97316", type: .expense),
+        SpendingCategory(name: "Transport", icon: "🚗", colorHex: "#3B82F6", type: .expense),
+        SpendingCategory(name: "Shopping", icon: "🛍️", colorHex: "#EC4899", type: .expense),
+        SpendingCategory(name: "Digital", icon: "💻", colorHex: "#8B5CF6", type: .expense),
+        SpendingCategory(name: "Entertainment", icon: "🎬", colorHex: "#F59E0B", type: .expense),
+        SpendingCategory(name: "Healthcare", icon: "🏥", colorHex: "#EF4444", type: .expense),
+        SpendingCategory(name: "Housing", icon: "🏠", colorHex: "#10B981", type: .expense),
+        SpendingCategory(name: "Education", icon: "🎓", colorHex: "#6366F1", type: .expense),
+        
+        // Income Categories
+        SpendingCategory(name: "Salary", icon: "💰", colorHex: "#22C55E", type: .income),
+        SpendingCategory(name: "Investment", icon: "📈", colorHex: "#14B8A6", type: .income),
+        SpendingCategory(name: "Other Income", icon: "💵", colorHex: "#059669", type: .income)
     ]
 }
 

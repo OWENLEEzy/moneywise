@@ -6,7 +6,10 @@ struct ManualEntrySheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     
+    @Query private var categories: [SpendingCategory]
+    
     @Binding var toastMessage: String?
+    var transactionToEdit: Transaction?
     
     @State private var amount: Decimal = 0
     @State private var type: TransactionType = .expense
@@ -20,38 +23,72 @@ struct ManualEntrySheet: View {
             Form {
                 Section(header: Text("Transaction Details")) {
                     TextField("Amount", value: $amount, format: .number)
+                        .keyboardType(.decimalPad)
                     Picker("Type", selection: $type) {
                         ForEach(TransactionType.allCases) { type in
                             Text(type.localizedTitle).tag(type)
                         }
                     }
-                    // TODO: Category picker
+                    
+                    Picker("Category", selection: $category) {
+                        Text("Uncategorized").tag(nil as SpendingCategory?)
+                        ForEach(categories) { category in
+                            HStack {
+                                Text(category.icon)
+                                Text(category.name)
+                            }
+                            .tag(category as SpendingCategory?)
+                        }
+                    }
+                    
                     TextField("Account", text: $account)
                     DatePicker("Date", selection: $date, displayedComponents: .date)
                     TextField("Note", text: $note)
                 }
             }
-            .navigationTitle("New Transaction")
+            .navigationTitle(transactionToEdit == nil ? "Manual Entry" : "Edit Transaction")
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel") {
+                    Button("Close") {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save") {
+                    Button(transactionToEdit == nil ? "New Transaction" : "Save Changes") {
                         saveTransaction()
                         dismiss()
                     }
+                }
+            }
+            .onAppear {
+                if let transaction = transactionToEdit {
+                    amount = transaction.amount
+                    type = transaction.type
+                    category = transaction.category
+                    account = transaction.account
+                    date = transaction.date
+                    note = transaction.note
                 }
             }
         }
     }
     
     private func saveTransaction() {
-        let newTransaction = Transaction(amount: amount, type: type, category: category, account: account, date: date, note: note)
-        context.insert(newTransaction)
-        toastMessage = "Transaction Saved"
+        if let transaction = transactionToEdit {
+            // Update existing
+            transaction.amount = amount
+            transaction.type = type
+            transaction.category = category
+            transaction.account = account
+            transaction.date = date
+            transaction.note = note
+            toastMessage = "Transaction Updated"
+        } else {
+            // Create new
+            let newTransaction = Transaction(amount: amount, type: type, category: category, account: account, date: date, note: note)
+            context.insert(newTransaction)
+            toastMessage = "Transaction Saved"
+        }
     }
 }
 
@@ -61,6 +98,7 @@ class AISmartEntryViewModel: ObservableObject {
     @Published var conversation: [Message] = []
     @Published var parsedTransaction: Transaction?
     @Published var isThinking: Bool = false
+    @Published var errorMessage: String?
     
     private let aiService: AIService
     
@@ -75,12 +113,24 @@ class AISmartEntryViewModel: ObservableObject {
         let textToProcess = inputText
         inputText = ""
         isThinking = true
+        errorMessage = nil
         
         do {
+            print("🔍 [AI Debug] Starting AI parse...")
             let parsed = try await aiService.parse(text: textToProcess, context: context)
+            print("✅ [AI Debug] Parse successful")
             self.parsedTransaction = parsed
+            self.conversation.append(Message(content: "I've parsed your transaction. Please confirm:", isUser: false))
+        } catch let error as AIServiceError {
+            print("❌ [AI Debug] AIServiceError: \(error.localizedDescription)")
+            let errorMsg = "Sorry, I couldn't understand that. Error: \(error.localizedDescription)"
+            self.conversation.append(Message(content: errorMsg, isUser: false))
+            self.errorMessage = error.localizedDescription
         } catch {
-            self.conversation.append(Message(content: "Sorry, I couldn't understand that. Please try again.", isUser: false))
+            print("❌ [AI Debug] Unknown error: \(error)")
+            let errorMsg = "Sorry, I couldn't understand that. Error: \(error.localizedDescription)"
+            self.conversation.append(Message(content: errorMsg, isUser: false))
+            self.errorMessage = error.localizedDescription
         }
         isThinking = false
     }
@@ -107,6 +157,7 @@ struct AISmartEntrySheet: View {
     @StateObject private var viewModel: AISmartEntryViewModel
     @StateObject private var speechService = SpeechRecognitionService()
     @State private var showingSpeechPermissionAlert = false
+    @State private var showingManualEntry = false
     
     @Binding var toastMessage: String?
     
@@ -166,7 +217,7 @@ struct AISmartEntrySheet: View {
                     }) {
                         Image(systemName: speechService.isRecording ? "stop.circle.fill" : "mic.circle.fill")
                             .font(.largeTitle)
-                            .foregroundColor(speechService.isRecording ? .red : .blue)
+                            .foregroundColor(speechService.isRecording ? Color(red: 0.95, green: 0.4, blue: 0.4) : Color(red: 0.2, green: 0.8, blue: 0.6))
                     }
                     
                     Button(action: {
@@ -176,6 +227,7 @@ struct AISmartEntrySheet: View {
                     }) {
                         Image(systemName: "arrow.up.circle.fill")
                             .font(.largeTitle)
+                            .foregroundColor(Color(red: 0.2, green: 0.8, blue: 0.6))
                     }
                     .disabled(viewModel.inputText.isEmpty)
                 }
@@ -188,12 +240,38 @@ struct AISmartEntrySheet: View {
             } message: {
                 Text("Please enable microphone access in Settings to use voice features.")
             }
+            .alert("AI Error", isPresented: .init(
+                get: { viewModel.errorMessage != nil },
+                set: { if !$0 { viewModel.errorMessage = nil } }
+            )) {
+                Button("OK", role: .cancel) {
+                    viewModel.errorMessage = nil
+                }
+            } message: {
+                if let error = viewModel.errorMessage {
+                    Text(error)
+                }
+            }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
                     Button("Close") {
                         dismiss()
                     }
                 }
+                
+                ToolbarItem(placement: .confirmationAction) {
+                    Button(action: {
+                        showingManualEntry = true
+                    }) {
+                        Image(systemName: "plus.circle.fill")
+                            .font(.system(size: 20))
+                            .foregroundColor(Color(red: 0.2, green: 0.8, blue: 0.6))
+                    }
+                }
+            }
+            .sheet(isPresented: $showingManualEntry) {
+                ManualEntrySheet(toastMessage: $toastMessage)
+                    .presentationDetents([.large])
             }
         }
     }

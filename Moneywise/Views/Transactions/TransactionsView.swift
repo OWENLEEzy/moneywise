@@ -6,58 +6,93 @@ struct TransactionsView: View {
     @Query(sort: \Transaction.date, order: .reverse) private var allTransactions: [Transaction]
     
     @State private var searchText = ""
-    @State private var filterType: TransactionType?
+    @State private var selectedType: TransactionType? = nil
+    @State private var transactionToEdit: Transaction?
+    @State private var toastMessage: String?
     
     var filteredTransactions: [Transaction] {
-        allTransactions.filter { transaction in
-            let matchesSearch = searchText.isEmpty || 
-                transaction.note.localizedCaseInsensitiveContains(searchText) ||
-                (transaction.category?.name.localizedCaseInsensitiveContains(searchText) ?? false)
-            let matchesType = filterType == nil || transaction.type == filterType
-            return matchesSearch && matchesType
+        var result = allTransactions
+        
+        if let type = selectedType {
+            result = result.filter { $0.type == type }
         }
+        
+        if !searchText.isEmpty {
+            result = result.filter { transaction in
+                let noteMatch = transaction.note.localizedCaseInsensitiveContains(searchText)
+                let categoryMatch = transaction.category?.name.localizedCaseInsensitiveContains(searchText) == true
+                return noteMatch || categoryMatch
+            }
+        }
+        
+        return result
     }
     
     var body: some View {
         NavigationStack {
             List {
                 ForEach(filteredTransactions) { transaction in
-                    TransactionRow(transaction: transaction)
+                    Button {
+                        transactionToEdit = transaction
+                    } label: {
+                        TransactionRow(transaction: transaction)
+                    }
+                    .swipeActions(edge: .trailing, allowsFullSwipe: true) {
+                        Button(role: .destructive) {
+                            context.delete(transaction)
+                        } label: {
+                            Label("Delete", systemImage: "trash")
+                        }
+                    }
+                    .swipeActions(edge: .leading, allowsFullSwipe: false) {
+                        Button {
+                            transactionToEdit = transaction
+                        } label: {
+                            Label("Edit", systemImage: "pencil")
+                        }
+                        .tint(Color(red: 0.2, green: 0.8, blue: 0.6))
+                    }
                 }
-                .onDelete(perform: deleteTransactions)
+                .onDelete(perform: deleteTransactions) // Keep existing onDelete for consistency or remove if swipeActions fully replace it
             }
-            .searchable(text: $searchText, prompt: "Search transactions")
             .navigationTitle("Transactions")
+            .searchable(text: $searchText, prompt: "Search transactions")
             .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
+                ToolbarItem(placement: .primaryAction) {
                     Menu {
-                        Button(action: { filterType = nil }) {
-                            HStack {
-                                Text("All")
-                                if filterType == nil {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
+                        Button {
+                            selectedType = nil
+                        } label: {
+                            Label("All", systemImage: "tray.full")
                         }
-                        Button(action: { filterType = .expense }) {
-                            HStack {
-                                Text("Expense")
-                                if filterType == .expense {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
+                        
+                        Button {
+                            selectedType = .expense
+                        } label: {
+                            Label("Expense", systemImage: "arrow.down.right")
                         }
-                        Button(action: { filterType = .income }) {
-                            HStack {
-                                Text("Income")
-                                if filterType == .income {
-                                    Image(systemName: "checkmark")
-                                }
-                            }
+                        
+                        Button {
+                            selectedType = .income
+                        } label: {
+                            Label("Income", systemImage: "arrow.up.right")
                         }
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
+                            .foregroundColor(selectedType == nil ? .primary : Color(red: 0.2, green: 0.8, blue: 0.6))
                     }
+                }
+            }
+            .sheet(item: $transactionToEdit) { transaction in
+                ManualEntrySheet(toastMessage: $toastMessage, transactionToEdit: transaction)
+            }
+            .overlay(alignment: .top) {
+                if let message = toastMessage {
+                    ToastView(message: message) {
+                        toastMessage = nil
+                    }
+                    .transition(.move(edge: .top).combined(with: .opacity))
+                    .padding(.top, 40)
                 }
             }
             .overlay {
@@ -84,19 +119,42 @@ struct TransactionRow: View {
     let transaction: Transaction
     
     var body: some View {
-        HStack {
+        HStack(spacing: 12) {
+            // Category Icon
+            if let category = transaction.category {
+                Text(category.icon)
+                    .font(.title2)
+                    .frame(width: 40, height: 40)
+                    .background(Color(hex: category.colorHex)?.opacity(0.2) ?? Color.gray.opacity(0.2))
+                    .cornerRadius(8)
+            } else {
+                Image(systemName: "questionmark.circle.fill")
+                    .font(.title2)
+                    .foregroundColor(.gray)
+                    .frame(width: 40, height: 40)
+                    .background(Color.gray.opacity(0.1))
+                    .cornerRadius(8)
+            }
+            
             VStack(alignment: .leading, spacing: 4) {
                 Text(transaction.category?.name ?? "Uncategorized")
                     .font(.headline)
-                Text(transaction.note)
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                    .foregroundColor(.primary)
+                
+                if !transaction.note.isEmpty {
+                    Text(transaction.note)
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                        .lineLimit(1)
+                }
             }
+            
             Spacer()
+            
             VStack(alignment: .trailing, spacing: 4) {
                 Text(transaction.amount.coinFormatted)
                     .font(.headline)
-                    .foregroundColor(transaction.type == .expense ? .red : .green)
+                    .foregroundColor(transaction.type == .expense ? .red : .green) // Keep consistent with Home view colors
                 Text(transaction.date, style: .date)
                     .font(.caption)
                     .foregroundColor(.secondary)

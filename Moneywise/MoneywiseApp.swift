@@ -56,7 +56,11 @@ struct MoneywiseApp: App {
         do {
             if try context.fetch(FetchDescriptor<SpendingCategory>()).isEmpty {
                 try context.saveInitialCategories()
+            } else {
+                // Migration: Convert SF Symbols to Emojis
+                try context.migrateCategoriesToEmoji()
             }
+            
             if try context.fetch(FetchDescriptor<SettingItem>()).isEmpty {
                 try context.insert(SettingItem(key: .onboardingCompleted, value: "false"))
             }
@@ -71,5 +75,60 @@ extension ModelContext {
         let defaults = SpendingCategory.defaultCategories
         defaults.forEach { insert($0) }
         try save()
+    }
+    
+    fileprivate func migrateCategoriesToEmoji() throws {
+        let categories = try fetch(FetchDescriptor<SpendingCategory>())
+        var hasChanges = false
+        
+        let sfSymbolToEmoji: [String: String] = [
+            "fork.knife": "🍔",
+            "car.fill": "🚗",
+            "bag.fill": "🛍️",
+            "desktopcomputer": "💻",
+            "film.fill": "🎬",
+            "heart.text.square.fill": "🏥",
+            "house.fill": "🏠",
+            "graduationcap.fill": "🎓",
+            "dollarsign.circle.fill": "💰",
+            "chart.line.uptrend.xyaxis": "📈",
+            "banknote.fill": "💵",
+            "creditcard.fill": "💳",
+            "cart.fill": "🛒",
+            "gamecontroller.fill": "🎮",
+            "tram.fill": "🚋",
+            "airplane": "✈️",
+            "cross.case.fill": "💼",
+            "gift.fill": "🎁",
+            "wifi": "🛜",
+            "phone.fill": "📱"
+        ]
+        
+        for category in categories {
+            // If icon is already an emoji (short string), skip
+            if category.icon.count <= 2 && !category.icon.contains(".") {
+                continue
+            }
+            
+            // Try to map from known SF Symbols
+            if let emoji = sfSymbolToEmoji[category.icon] {
+                category.icon = emoji
+                hasChanges = true
+            } else {
+                // Fallback for unknown SF Symbols
+                // Assign a default emoji based on type or just a generic one
+                if category.type == .income {
+                    category.icon = "💰"
+                } else {
+                    category.icon = "🏷️"
+                }
+                hasChanges = true
+            }
+        }
+        
+        if hasChanges {
+            try save()
+            print("Migrated categories to emojis")
+        }
     }
 }

@@ -46,13 +46,44 @@ struct GoalDetailView: View {
     @Bindable var goal: Goal
     @State private var showAddFunds = false
     
+    private var dailySavingsNeeded: Decimal {
+        let remaining = goal.targetAmount - goal.currentAmount
+        guard remaining > 0 else { return 0 }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let daysUntilDeadline = calendar.dateComponents([.day], from: now, to: goal.deadline).day ?? 0
+        
+        guard daysUntilDeadline > 0 else { return remaining }
+        
+        return remaining / Decimal(daysUntilDeadline)
+    }
+    
+    private var savingsMessage: String {
+        let remaining = goal.targetAmount - goal.currentAmount
+        
+        if remaining <= 0 {
+            return "🎉 恭喜！您已达成目标！"
+        }
+        
+        let calendar = Calendar.current
+        let now = Date()
+        let daysUntilDeadline = calendar.dateComponents([.day], from: now, to: goal.deadline).day ?? 0
+        
+        if daysUntilDeadline <= 0 {
+            return "⚠️ 目标截止日期已过"
+        }
+        
+        return "每天需要储蓄 💰\(dailySavingsNeeded.coinFormatted) 即可达成目标"
+    }
+    
     var body: some View {
         VStack(spacing: 24) {
             Text(goal.name)
                 .font(.largeTitle)
                 .fontWeight(.bold)
             
-            MountainProgressView(progress: goal.progress)
+            PiggyBankProgressView(progress: goal.progress)
                 .frame(height: 200)
             
             VStack(alignment: .leading, spacing: 8) {
@@ -67,18 +98,23 @@ struct GoalDetailView: View {
                     Text(goal.currentAmount.coinFormatted)
                         .foregroundColor(.green)
                 }
-                Text("Left to reach goal")
-                    .font(.caption)
-                    .foregroundColor(.secondary)
+                HStack {
+                    Text("Deadline")
+                    Spacer()
+                    Text(goal.deadline.formatted(date: .abbreviated, time: .omitted))
+                        .foregroundColor(.secondary)
+                }
             }
             .padding()
             .background(Color.gray.opacity(0.1))
             .cornerRadius(12)
             .padding(.horizontal)
             
-            Text("Based on current pace, expected to July 2026, 1 month ahead to schedule!")
+            Text(savingsMessage)
                 .font(.footnote)
                 .foregroundColor(.secondary)
+                .multilineTextAlignment(.center)
+                .padding(.horizontal)
             
             Button("Add Funds") {
                 showAddFunds = true
@@ -97,7 +133,7 @@ struct GoalDetailView: View {
     }
 }
 
-struct MountainProgressView: View {
+struct PiggyBankProgressView: View {
     let progress: Double
     
     var body: some View {
@@ -105,39 +141,142 @@ struct MountainProgressView: View {
             let width = geometry.size.width
             let height = geometry.size.height
             
-            Path { path in
-                path.move(to: CGPoint(x: width * 0.1, y: height * 0.8))
-                path.addLine(to: CGPoint(x: width * 0.3, y: height * 0.3))
-                path.addLine(to: CGPoint(x: width * 0.5, y: height * 0.6))
-                path.addLine(to: CGPoint(x: width * 0.7, y: height * 0.2))
-                path.addLine(to: CGPoint(x: width * 0.9, y: height * 0.8))
-                path.closeSubpath()
+            ZStack {
+                // Background (Empty Piggy)
+                PiggyBankShape()
+                    .fill(Color.pink.opacity(0.1))
+                
+                // Outline
+                PiggyBankShape()
+                    .stroke(Color.pink.opacity(0.6), lineWidth: 3)
+                
+                // Liquid Fill
+                PiggyBankShape()
+                    .fill(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color.pink,
+                                Color.pink.opacity(0.7)
+                            ]),
+                            startPoint: .bottom,
+                            endPoint: .top
+                        )
+                    )
+                    .mask(
+                        GeometryReader { geo in
+                            VStack {
+                                Spacer()
+                                Rectangle()
+                                    .frame(height: geo.size.height * CGFloat(progress))
+                            }
+                        }
+                    )
+                
+                // Details (Eye & Slot) - Overlay on top
+                PiggyBankDetailsShape()
+                    .stroke(Color.pink.opacity(0.8), lineWidth: 2)
+                
+                // Percentage text
+                Text("\(Int(progress * 100))%")
+                    .font(.system(size: min(width, height) * 0.2, weight: .bold))
+                    .foregroundColor(.white)
+                    .shadow(color: .pink, radius: 2)
             }
-            .stroke(Color.black, lineWidth: 2)
-            
-            Path { path in
-                path.move(to: CGPoint(x: width * 0.1, y: height * 0.8))
-                path.addLine(to: CGPoint(x: width * 0.3, y: height * 0.3))
-                path.addLine(to: CGPoint(x: width * 0.5, y: height * 0.6))
-                path.addLine(to: CGPoint(x: width * 0.7, y: height * 0.2))
-                path.addLine(to: CGPoint(x: width * 0.9, y: height * 0.8))
-                path.addLine(to: CGPoint(x: width * 0.9, y: height))
-                path.addLine(to: CGPoint(x: width * 0.1, y: height))
-                path.closeSubpath()
-            }
-            .fill(Color.green.opacity(0.3))
-            
-            Path { path in
-                path.move(to: CGPoint(x: width * 0.1, y: height * 0.8))
-                path.addLine(to: CGPoint(x: width * 0.3, y: height * 0.3))
-                path.addLine(to: CGPoint(x: width * 0.5, y: height * 0.6))
-                path.addLine(to: CGPoint(x: width * 0.7, y: height * 0.2))
-                path.addLine(to: CGPoint(x: width * 0.9, y: height * 0.8))
-                path.addLine(to: CGPoint(x: width * 0.9, y: height * (1 - progress)))
-                path.addLine(to: CGPoint(x: width * 0.1, y: height * (1 - progress)))
-                path.closeSubpath()
-            }
-            .fill(Color.green)
         }
+    }
+}
+
+struct PiggyBankShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        
+        let w = rect.width
+        let h = rect.height
+        
+        // Start at top of snout
+        path.move(to: CGPoint(x: w * 0.85, y: h * 0.45))
+        
+        // Forehead to Ear
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.7, y: h * 0.25),
+            control: CGPoint(x: w * 0.8, y: h * 0.3)
+        )
+        
+        // Ear
+        path.addLine(to: CGPoint(x: w * 0.75, y: h * 0.1))
+        path.addLine(to: CGPoint(x: w * 0.6, y: h * 0.25))
+        
+        // Back
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.15, y: h * 0.4),
+            control: CGPoint(x: w * 0.4, y: h * 0.15)
+        )
+        
+        // Tail
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.05, y: h * 0.35),
+            control: CGPoint(x: w * 0.1, y: h * 0.3)
+        )
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.12, y: h * 0.5),
+            control: CGPoint(x: w * 0.02, y: h * 0.45)
+        )
+        
+        // Rump
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.15, y: h * 0.7),
+            control: CGPoint(x: w * 0.08, y: h * 0.6)
+        )
+        
+        // Back Leg
+        path.addLine(to: CGPoint(x: w * 0.15, y: h * 0.85))
+        path.addLine(to: CGPoint(x: w * 0.25, y: h * 0.85))
+        path.addLine(to: CGPoint(x: w * 0.25, y: h * 0.75))
+        
+        // Belly
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.6, y: h * 0.75),
+            control: CGPoint(x: w * 0.4, y: h * 0.85)
+        )
+        
+        // Front Leg
+        path.addLine(to: CGPoint(x: w * 0.6, y: h * 0.85))
+        path.addLine(to: CGPoint(x: w * 0.7, y: h * 0.85))
+        path.addLine(to: CGPoint(x: w * 0.7, y: h * 0.65))
+        
+        // Chin
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.85, y: h * 0.6),
+            control: CGPoint(x: w * 0.8, y: h * 0.7)
+        )
+        
+        // Snout Face
+        path.addLine(to: CGPoint(x: w * 0.95, y: h * 0.6))
+        path.addLine(to: CGPoint(x: w * 0.95, y: h * 0.45))
+        
+        path.closeSubpath()
+        
+        return path
+    }
+}
+
+struct PiggyBankDetailsShape: Shape {
+    func path(in rect: CGRect) -> Path {
+        var path = Path()
+        let w = rect.width
+        let h = rect.height
+        
+        // Eye
+        let eyeRect = CGRect(x: w * 0.72, y: h * 0.38, width: w * 0.04, height: w * 0.04)
+        path.addEllipse(in: eyeRect)
+        
+        // Coin Slot
+        path.move(to: CGPoint(x: w * 0.45, y: h * 0.25))
+        path.addQuadCurve(
+            to: CGPoint(x: w * 0.55, y: h * 0.25),
+            control: CGPoint(x: w * 0.5, y: h * 0.22)
+        )
+        
+        return path
     }
 }

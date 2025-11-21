@@ -229,11 +229,25 @@ struct SettingsView: View {
                     }
                 }
                 
+                Section(header: Text("Category Management")) {
+                    NavigationLink(destination: CategoryManagementView()) {
+                        HStack {
+                            Image(systemName: "tag.fill")
+                                .foregroundColor(Color(red: 0.2, green: 0.8, blue: 0.6))
+                            Text("Manage Categories")
+                        }
+                    }
+                    
+                    Text("Customize spending and income categories with emoji icons")
+                        .font(.caption)
+                        .foregroundColor(.secondary)
+                }
+                
                 Section(header: Text("About")) {
                     HStack {
                         Text("AI Model")
                         Spacer()
-                        Text("Gemini 2.5 Flash")
+                        Text("Gemini 1.5 Flash (001)")
                             .foregroundColor(.secondary)
                     }
                     HStack {
@@ -295,16 +309,62 @@ struct SettingsView: View {
         
         Task {
             do {
-                let service = GeminiService()
-                let testPrompt = GeminiPromptBuilder().transactionPrompt(with: "Test Connection")
-                _ = try await service.send(payload: testPrompt, apiKey: key)
+                // Use the actual generation endpoint to verify model access
+                let testURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent?key=\(key)")!
+                var request = URLRequest(url: testURL)
+                request.httpMethod = "POST"
+                request.addValue("application/json", forHTTPHeaderField: "Content-Type")
+                
+                // Simple payload to test generation
+                let payload = ["contents": [["parts": [["text": "Hello"]]]]]
+                request.httpBody = try JSONSerialization.data(withJSONObject: payload)
+                request.timeoutInterval = 10
+                
+                let (data, response) = try await URLSession.shared.data(for: request)
+                
+                guard let httpResponse = response as? HTTPURLResponse else {
+                    throw NSError(domain: "InvalidResponse", code: -1, userInfo: [NSLocalizedDescriptionKey: "Invalid server response"])
+                }
                 
                 await MainActor.run {
-                    testResult = .success
+                    if (200...299).contains(httpResponse.statusCode) {
+                        testResult = .success
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.success)
+                    } else {
+                        // Try to parse Google error
+                        var errorMessage = "Connection Failed (Code: \(httpResponse.statusCode))"
+                        
+                        if let json = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                           let errorObj = json["error"] as? [String: Any],
+                           let message = errorObj["message"] as? String {
+                            errorMessage = message
+                        } else if let text = String(data: data, encoding: .utf8) {
+                            errorMessage = text
+                        }
+                        
+                        testResult = .failure(errorMessage)
+                        let generator = UINotificationFeedbackGenerator()
+                        generator.notificationOccurred(.error)
+                    }
+                    isTestingConnection = false
+                }
+            } catch let error as URLError {
+                await MainActor.run {
+                    switch error.code {
+                    case .notConnectedToInternet:
+                        testResult = .failure("No Internet Connection")
+                    case .timedOut:
+                        testResult = .failure("Request Timed Out")
+                    case .cannotFindHost, .cannotConnectToHost:
+                        testResult = .failure("Host Unreachable")
+                    default:
+                        testResult = .failure("Network Error: \(error.localizedDescription)")
+                    }
                     isTestingConnection = false
                     
                     let generator = UINotificationFeedbackGenerator()
-                    generator.notificationOccurred(.success)
+                    generator.notificationOccurred(.error)
                 }
             } catch {
                 await MainActor.run {
