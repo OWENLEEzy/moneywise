@@ -41,41 +41,41 @@ struct TransactionsView: View {
                         Button(role: .destructive) {
                             context.delete(transaction)
                         } label: {
-                            Label("Delete", systemImage: "trash")
+                            Label("Delete".localized, systemImage: "trash")
                         }
                     }
                     .swipeActions(edge: .leading, allowsFullSwipe: false) {
                         Button {
                             transactionToEdit = transaction
                         } label: {
-                            Label("Edit", systemImage: "pencil")
+                            Label("Edit".localized, systemImage: "pencil")
                         }
                         .tint(Color(red: 0.2, green: 0.8, blue: 0.6))
                     }
                 }
                 .onDelete(perform: deleteTransactions) // Keep existing onDelete for consistency or remove if swipeActions fully replace it
             }
-            .navigationTitle("Transactions")
-            .searchable(text: $searchText, prompt: "Search transactions")
+            .navigationTitle("Transactions".localized)
+            .searchable(text: $searchText, prompt: "Search transactions".localized)
             .toolbar {
                 ToolbarItem(placement: .primaryAction) {
                     Menu {
                         Button {
                             selectedType = nil
                         } label: {
-                            Label("All", systemImage: "tray.full")
+                            Label("All".localized, systemImage: "tray.full")
                         }
                         
                         Button {
                             selectedType = .expense
                         } label: {
-                            Label("Expense", systemImage: "arrow.down.right")
+                            Label("Expense".localized, systemImage: "arrow.down.right")
                         }
                         
                         Button {
                             selectedType = .income
                         } label: {
-                            Label("Income", systemImage: "arrow.up.right")
+                            Label("Income".localized, systemImage: "arrow.up.right")
                         }
                     } label: {
                         Image(systemName: "line.3.horizontal.decrease.circle")
@@ -98,9 +98,9 @@ struct TransactionsView: View {
             .overlay {
                 if filteredTransactions.isEmpty {
                     ContentUnavailableView {
-                        Label("No transactions yet", systemImage: "doc.text.magnifyingglass")
+                        Label("No transactions yet".localized, systemImage: "doc.text.magnifyingglass")
                     } description: {
-                        Text("Transactions will appear here once you start tracking")
+                        Text("Transactions will appear here once you start tracking".localized)
                     }
                 }
             }
@@ -125,21 +125,22 @@ struct TransactionRow: View {
                 Text(category.icon)
                     .font(.title2)
                     .frame(width: 40, height: 40)
-                    .background(Color(hex: category.colorHex)?.opacity(0.2) ?? Color.gray.opacity(0.2))
+                    .background(Color.gray.opacity(0.2))
                     .cornerRadius(8)
             } else {
-                Image(systemName: "questionmark.circle.fill")
+                Text("❓")
                     .font(.title2)
-                    .foregroundColor(.gray)
                     .frame(width: 40, height: 40)
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
             }
             
             VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.category?.name ?? "Uncategorized")
-                    .font(.headline)
-                    .foregroundColor(.primary)
+                if let categoryName = transaction.category?.name {
+                    Text(categoryName)
+                        .font(.headline)
+                        .foregroundColor(.primary)
+                }
                 
                 if !transaction.note.isEmpty {
                     Text(transaction.note)

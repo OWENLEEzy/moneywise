@@ -92,7 +92,7 @@ struct BudgetSettingsSheet: View {
                     }
                 }
             }
-            .navigationTitle("Budget Management")
+            .navigationTitle("Budget Management".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {

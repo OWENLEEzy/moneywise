@@ -35,7 +35,7 @@ struct RecentTransactionsDetailView: View {
                 }
             }
             .background(Color(UIColor.systemGroupedBackground))
-            .navigationTitle("Recent Transactions")
+            .navigationTitle("Recent Transactions".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
@@ -73,7 +73,7 @@ struct DailyTransactionSection: View {
     
     private var weekday: String {
         let formatter = DateFormatter()
-        formatter.locale = Locale(identifier: "zh_CN")
+        formatter.locale = LanguageManager.shared.locale
         formatter.dateFormat = "EEEE"
         let weekdayFull = formatter.string(from: date)
         // Convert "星期一" to "星期一"
@@ -181,7 +181,7 @@ struct TransactionDetailRow: View {
                     .background(Color.gray.opacity(0.1))
                     .cornerRadius(8)
             } else {
-                Image(systemName: "questionmark.circle.fill")
+                Text("❓")
                     .font(.system(size: 28))
                     .foregroundColor(.gray)
                     .frame(width: 40, height: 40)
@@ -189,19 +189,14 @@ struct TransactionDetailRow: View {
             
             // Transaction details
             VStack(alignment: .leading, spacing: 4) {
-                Text(transaction.note)
-                    .font(.system(size: 16))
-                    .foregroundColor(.primary)
+                if !transaction.note.isEmpty {
+                    Text(transaction.note)
+                        .font(.system(size: 16))
+                        .foregroundColor(.primary)
+                }
                 
                 HStack(spacing: 4) {
-                    Text(transaction.category?.name ?? "未分类")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                    
-                    Text("•")
-                        .font(.system(size: 12))
-                        .foregroundColor(.secondary)
-                    
+
                     Text(transaction.paymentMethod)
                         .font(.system(size: 12))
                         .foregroundColor(.secondary)

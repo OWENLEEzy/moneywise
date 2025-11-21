@@ -9,7 +9,7 @@ struct CategoryEditorSheet: View {
     
     @State private var name: String = ""
     @State private var icon: String = "🍔"
-    @State private var color: Color = .blue
+    @State private var colorHex: String = "#3B82F6" // Default blue
     @State private var type: TransactionType = .expense
     
     private let commonEmojis = [
@@ -29,9 +29,16 @@ struct CategoryEditorSheet: View {
         "🏠", "💻", "📧", "🎓", "🐕"
     ]
     
-    private let presetColors: [Color] = [
-        .red, .orange, .yellow, .green, .blue, .purple, .pink, .gray, .black,
-        Color(red: 0.2, green: 0.8, blue: 0.6) // Theme color
+    private let presetColorPairs: [(color: Color, hex: String)] = [
+        (.red, "#EF4444"),
+        (.orange, "#F97316"),
+        (.yellow, "#F59E0B"),
+        (.green, "#10B981"),
+        (.blue, "#3B82F6"),
+        (.purple, "#8B5CF6"),
+        (.pink, "#EC4899"),
+        (.gray, "#6B7280"),
+        (Color(red: 0.2, green: 0.8, blue: 0.6), "#34D399") // Theme color
     ]
     
     init(categoryToEdit: SpendingCategory? = nil) {
@@ -69,22 +76,22 @@ struct CategoryEditorSheet: View {
                 
                 Section(header: Text("Color")) {
                     LazyVGrid(columns: [GridItem(.adaptive(minimum: 40))], spacing: 10) {
-                        ForEach(presetColors, id: \.self) { presetColor in
+                        ForEach(presetColorPairs, id: \.hex) { pair in
                             Circle()
-                                .fill(presetColor)
+                                .fill(pair.color)
                                 .frame(width: 30, height: 30)
                                 .overlay(
                                     Circle()
-                                        .stroke(Color.primary, lineWidth: color == presetColor ? 2 : 0)
+                                        .stroke(Color.primary, lineWidth: colorHex == pair.hex ? 2 : 0)
                                 )
                                 .onTapGesture {
-                                    color = presetColor
+                                    colorHex = pair.hex
                                 }
                         }
                     }
                     .padding(.vertical)
                     
-                    ColorPicker("Custom Color", selection: $color)
+
                 }
             }
             .navigationTitle(categoryToEdit == nil ? "New Category" : "Edit Category")
@@ -108,7 +115,7 @@ struct CategoryEditorSheet: View {
                 if let category = categoryToEdit {
                     name = category.name
                     icon = category.icon
-                    color = Color(hex: category.colorHex) ?? .blue
+                    colorHex = category.colorHex
                     type = category.type
                 }
             }
@@ -116,7 +123,6 @@ struct CategoryEditorSheet: View {
     }
     
     private func saveCategory() {
-        let colorHex = color.toHex() ?? "#000000"
         
         if let category = categoryToEdit {
             category.name = name

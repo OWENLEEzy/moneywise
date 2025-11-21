@@ -45,21 +45,38 @@ class HomeViewModel: ObservableObject {
         }
         
         let income = monthlyTransactions.filter { $0.type == .income }.reduce(0) { $0 + $1.amount }
-        let expenses = monthlyTransactions.filter { $0.type == .expense }.reduce(0) { $0 + $1.amount }
         
-        let remainingBudget = budget - expenses
+        // Separate goal savings from regular expenses
+        let expenseTransactions = monthlyTransactions.filter { $0.type == .expense }
+        let goalSavings = expenseTransactions.filter { 
+            $0.note.contains("Goal funding:") || $0.category?.name == "Savings"
+        }.reduce(0) { $0 + $1.amount }
         
-        self.monthlySummary = MonthlySummary(income: income, expenses: expenses, remainingBudget: remainingBudget)
+        let regularExpenses = expenseTransactions.filter { 
+            !($0.note.contains("Goal funding:") || $0.category?.name == "Savings")
+        }.reduce(0) { $0 + $1.amount }
+        
+        // Remaining budget = (Budget > 0 ? Budget : Income) - Spent - SavedToGoals
+        let baseAmount = budget > 0 ? budget : income
+        let remainingBudget = baseAmount - regularExpenses - goalSavings
+        
+        self.monthlySummary = MonthlySummary(
+            income: income, 
+            expenses: regularExpenses, 
+            savedToGoals: goalSavings,
+            remainingBudget: remainingBudget
+        )
     }
 }
 
 struct MonthlySummary {
     let income: Decimal
     let expenses: Decimal
+    let savedToGoals: Decimal
     let remainingBudget: Decimal
     
     static var empty: MonthlySummary {
-        MonthlySummary(income: 0, expenses: 0, remainingBudget: 0)
+        MonthlySummary(income: 0, expenses: 0, savedToGoals: 0, remainingBudget: 0)
     }
 }
 
@@ -72,6 +89,7 @@ struct HomeView: View {
     @Query private var goals: [Goal]
     
     @StateObject private var viewModel = HomeViewModel()
+    @ObservedObject private var languageManager = LanguageManager.shared
     @State private var showSettings = false
     @State private var showBudgetSettings = false
     
@@ -95,12 +113,17 @@ struct HomeView: View {
                 .padding(.bottom, 100) // Space for floating button bar
             }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
-            .navigationTitle("Today, \(Date().formatted(.dateTime.month().day()))")
+            .navigationTitle("Today".localized + ", \(Date().formatted(.dateTime.month().day().locale(LanguageManager.shared.locale)))")
             .navigationBarTitleDisplayMode(.large)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showSettings = true }) {
                         Image(systemName: "gearshape.fill")
+                            .foregroundColor(.primary)
+                    }
+                    
+                    NavigationLink(destination: AIChatView()) {
+                        Image(systemName: "bubble.left.and.bubble.right.fill")
                             .foregroundColor(.primary)
                     }
                 }
@@ -130,11 +153,10 @@ struct HeroCard: View {
     let budget: Decimal
     @Binding var showBudgetSettings: Bool
     @State private var showRecentTransactions = false
+    @ObservedObject private var languageManager = LanguageManager.shared
     
     private var monthYearText: String {
-        let formatter = DateFormatter()
-        formatter.dateFormat = "yyyy年MM月"
-        return formatter.string(from: viewModel.displayMonth)
+        return viewModel.displayMonth.formatted(.dateTime.year().month(.wide).locale(languageManager.locale))
     }
     
     var body: some View {
@@ -142,7 +164,7 @@ struct HeroCard: View {
             // Header with month navigation
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Assets overview")
+                    Text("Assets overview".localized)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                     
@@ -176,9 +198,9 @@ struct HeroCard: View {
                 Spacer()
                 Button(action: { showRecentTransactions = true }) {
                     Image(systemName: "ellipsis")
-                        .foregroundColor(.white.opacity(0.7))
-                        .font(.system(size: 18, weight: .medium))
-                        .padding(8)
+                    .foregroundColor(.white.opacity(0.7))
+                    .font(.system(size: 18, weight: .medium))
+                    .padding(8)
                 }
             }
             
@@ -187,57 +209,77 @@ struct HeroCard: View {
                     .font(.system(size: 42, weight: .bold))
                     .foregroundColor(.white)
                 
-                Text("This month's remaining budget")
+                Text("This month's remaining budget".localized)
                     .font(.system(size: 14, weight: .medium))
                     .foregroundColor(.white.opacity(0.8))
             }
             .padding(.vertical, 8)
             
-            // Custom progress bar with gradient
-            GeometryReader { geometry in
-                ZStack(alignment: .leading) {
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(Color.white.opacity(0.2))
-                        .frame(height: 8)
-                    
-                    let totalAmount = (summary.expenses + summary.remainingBudget as NSDecimalNumber).doubleValue
-                    let spentAmount = (summary.expenses as NSDecimalNumber).doubleValue
-                    // Use budget if available for progress calculation, otherwise fallback to expenses + remaining
-                    let progressBase = budget > 0 ? (budget as NSDecimalNumber).doubleValue : totalAmount
-                    let progress = progressBase > 0 ? spentAmount / progressBase : 0
-                    
-                    RoundedRectangle(cornerRadius: 8)
-                        .fill(
-                            LinearGradient(
-                                gradient: Gradient(colors: [Color.red.opacity(0.8), Color.orange.opacity(0.9)]),
-                                startPoint: .leading,
-                                endPoint: .trailing
-                            )
-                        )
-                        .frame(width: min(geometry.size.width * progress, geometry.size.width), height: 8)
-                }
-            }
-            .frame(height: 8)
-            
-            HStack {
-                VStack(alignment: .leading, spacing: 4) {
-                    Text("💸 Spent")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+            HStack(spacing: 12) {
+                // Spent Card
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "flame.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        Text("Spent".localized)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                     Text(summary.expenses.coinFormatted)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
-                Spacer()
-                VStack(alignment: .trailing, spacing: 4) {
-                    Text("💵 Income")
-                        .font(.system(size: 12, weight: .medium))
-                        .foregroundColor(.white.opacity(0.7))
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(16)
+                
+                // Saved to Goals Card
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "target")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        Text("Saved".localized)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
+                    Text(summary.savedToGoals.coinFormatted)
+                        .font(.system(size: 16, weight: .bold))
+                        .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
+                }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(16)
+                
+                // Income Card
+                VStack(alignment: .leading, spacing: 8) {
+                    HStack(spacing: 4) {
+                        Image(systemName: "arrow.up.circle.fill")
+                            .font(.system(size: 14))
+                            .foregroundColor(.white.opacity(0.8))
+                        Text("Income".localized)
+                            .font(.system(size: 13, weight: .regular))
+                            .foregroundColor(.white.opacity(0.8))
+                    }
                     Text(summary.income.coinFormatted)
-                        .font(.system(size: 16, weight: .semibold))
+                        .font(.system(size: 16, weight: .bold))
                         .foregroundColor(.white)
+                        .lineLimit(1)
+                        .minimumScaleFactor(0.8)
                 }
+                .padding(16)
+                .frame(maxWidth: .infinity, alignment: .leading)
+                .background(Color.white.opacity(0.1))
+                .cornerRadius(16)
             }
+
             .padding(.top, 4)
         }
         .padding(24)
@@ -277,10 +319,11 @@ struct HeroCard: View {
 
 struct GoalsTicker: View {
     let goals: [Goal]
+    @ObservedObject private var languageManager = LanguageManager.shared
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Your Goals")
+            Text("Your Goals".localized)
                 .font(.system(size: 22, weight: .bold))
                 .foregroundColor(.primary)
             
@@ -292,7 +335,7 @@ struct GoalsTicker: View {
                             Image(systemName: "target")
                                 .font(.system(size: 40))
                                 .foregroundColor(.gray.opacity(0.4))
-                            Text("No goals yet. Set one up!")
+                            Text("No goals yet. Set one up!".localized)
                                 .font(.system(size: 14, weight: .medium))
                                 .foregroundColor(.secondary)
                         }

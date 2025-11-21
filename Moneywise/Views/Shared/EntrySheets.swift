@@ -21,17 +21,16 @@ struct ManualEntrySheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Transaction Details")) {
-                    TextField("Amount", value: $amount, format: .number)
+                Section(header: Text("Transaction Details".localized)) {
+                    TextField("Amount".localized, value: $amount, format: .number)
                         .keyboardType(.decimalPad)
-                    Picker("Type", selection: $type) {
+                    Picker("Type".localized, selection: $type) {
                         ForEach(TransactionType.allCases) { type in
                             Text(type.localizedTitle).tag(type)
                         }
                     }
                     
-                    Picker("Category", selection: $category) {
-                        Text("Uncategorized").tag(nil as SpendingCategory?)
+                    Picker("Category".localized, selection: $category) {
                         ForEach(categories) { category in
                             HStack {
                                 Text(category.icon)
@@ -41,20 +40,20 @@ struct ManualEntrySheet: View {
                         }
                     }
                     
-                    TextField("Account", text: $account)
-                    DatePicker("Date", selection: $date, displayedComponents: .date)
-                    TextField("Note", text: $note)
+                    TextField("Account".localized, text: $account)
+                    DatePicker("Date".localized, selection: $date, displayedComponents: .date)
+                    TextField("Note".localized, text: $note)
                 }
             }
-            .navigationTitle(transactionToEdit == nil ? "Manual Entry" : "Edit Transaction")
+            .navigationTitle(transactionToEdit == nil ? "Manual Entry".localized : "Edit Transaction".localized)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
+                    Button("Close".localized) {
                         dismiss()
                     }
                 }
                 ToolbarItem(placement: .confirmationAction) {
-                    Button(transactionToEdit == nil ? "New Transaction" : "Save Changes") {
+                    Button(transactionToEdit == nil ? "New Transaction".localized : "Save Changes".localized) {
                         saveTransaction()
                         dismiss()
                     }
@@ -82,12 +81,12 @@ struct ManualEntrySheet: View {
             transaction.account = account
             transaction.date = date
             transaction.note = note
-            toastMessage = "Transaction Updated"
+            toastMessage = "Transaction Updated".localized
         } else {
             // Create new
             let newTransaction = Transaction(amount: amount, type: type, category: category, account: account, date: date, note: note)
             context.insert(newTransaction)
-            toastMessage = "Transaction Saved"
+            toastMessage = "Transaction Saved".localized
         }
     }
 }
@@ -104,7 +103,7 @@ class AISmartEntryViewModel: ObservableObject {
     
     init(aiService: AIService) {
         self.aiService = aiService
-        self.conversation.append(Message(content: "Welcome! How can I help you?", isUser: false))
+        self.conversation.append(Message(content: "Welcome! How can I help you?".localized, isUser: false))
     }
     
     func sendMessage(context: ModelContext) async {
@@ -120,7 +119,7 @@ class AISmartEntryViewModel: ObservableObject {
             let parsed = try await aiService.parse(text: textToProcess, context: context)
             print("✅ [AI Debug] Parse successful")
             self.parsedTransaction = parsed
-            self.conversation.append(Message(content: "I've parsed your transaction. Please confirm:", isUser: false))
+            self.conversation.append(Message(content: "I've parsed your transaction. Please confirm:".localized, isUser: false))
         } catch let error as AIServiceError {
             print("❌ [AI Debug] AIServiceError: \(error.localizedDescription)")
             let errorMsg = "Sorry, I couldn't understand that. Error: \(error.localizedDescription)"
@@ -138,7 +137,7 @@ class AISmartEntryViewModel: ObservableObject {
     func confirmTransaction(context: ModelContext) {
         if let transaction = parsedTransaction {
             context.insert(transaction)
-            conversation.append(Message(content: "Transaction saved!", isUser: false))
+            conversation.append(Message(content: "Transaction saved!".localized, isUser: false))
             parsedTransaction = nil
         }
     }
@@ -189,7 +188,7 @@ struct AISmartEntrySheet: View {
                 }
                 
                 HStack {
-                    TextField("Just bought a bento box...", text: $viewModel.inputText)
+                    TextField("Just bought a bento box...".localized, text: $viewModel.inputText)
                         .textFieldStyle(RoundedBorderTextFieldStyle())
                         .onChange(of: speechService.transcribedText) { oldValue, newValue in
                             if !newValue.isEmpty {
@@ -233,18 +232,18 @@ struct AISmartEntrySheet: View {
                 }
                 .padding()
             }
-            .navigationTitle("AI Recording")
+            .navigationTitle("AI Recording".localized)
             .navigationBarTitleDisplayMode(.inline)
-            .alert("Microphone Permission Required", isPresented: $showingSpeechPermissionAlert) {
-                Button("OK", role: .cancel) { }
+            .alert("Microphone Permission Required".localized, isPresented: $showingSpeechPermissionAlert) {
+                Button("OK".localized, role: .cancel) { }
             } message: {
-                Text("Please enable microphone access in Settings to use voice features.")
+                Text("Please enable microphone access in Settings to use voice features.".localized)
             }
-            .alert("AI Error", isPresented: .init(
+            .alert("AI Error".localized, isPresented: .init(
                 get: { viewModel.errorMessage != nil },
                 set: { if !$0 { viewModel.errorMessage = nil } }
             )) {
-                Button("OK", role: .cancel) {
+                Button("OK".localized, role: .cancel) {
                     viewModel.errorMessage = nil
                 }
             } message: {
@@ -254,7 +253,7 @@ struct AISmartEntrySheet: View {
             }
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Close") {
+                    Button("Close".localized) {
                         dismiss()
                     }
                 }
@@ -311,7 +310,7 @@ struct TransactionConfirmationCard: View {
     
     var body: some View {
         VStack(alignment: .leading, spacing: 16) {
-            Text("Confirm Transaction")
+            Text("Confirm Transaction".localized)
                 .font(.headline)
             
             // Amount
@@ -322,22 +321,22 @@ struct TransactionConfirmationCard: View {
             // Details
             VStack(alignment: .leading, spacing: 6) {
                 HStack {
-                    Text("Category:")
+                    Text("Category:".localized)
                         .foregroundColor(.secondary)
-                    Text(transaction.category?.name ?? "Uncategorized")
+                    Text(transaction.category?.name ?? "Uncategorized".localized)
                 }
                 HStack {
-                    Text("Account:")
+                    Text("Account:".localized)
                         .foregroundColor(.secondary)
                     Text(transaction.account)
                 }
                 HStack {
-                    Text("Time:")
+                    Text("Time:".localized)
                         .foregroundColor(.secondary)
-                    Text(transaction.date.formatted(date: .abbreviated, time: .shortened))
+                    Text(transaction.date.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: LanguageManager.shared.locale)))
                 }
                 HStack {
-                    Text("Note:")
+                    Text("Note:".localized)
                         .foregroundColor(.secondary)
                     Text(transaction.note)
                 }
@@ -350,7 +349,7 @@ struct TransactionConfirmationCard: View {
                     HStack {
                         Image(systemName: "clock.fill")
                             .foregroundColor(.orange)
-                        Text("Auto-confirming in \(countdown)s")
+                        Text(String(format: "Auto-confirming in %ds".localized, countdown))
                             .foregroundColor(.orange)
                             .font(.subheadline)
                     }
@@ -366,7 +365,7 @@ struct TransactionConfirmationCard: View {
                     Image(systemName: "exclamationmark.triangle.fill")
                     // Low confidence, please confirm manually
                         .foregroundColor(.yellow)
-                    Text("Low confidence, please check details")
+                    Text("Low confidence, please check details".localized)
                         .font(.caption)
                         .foregroundColor(.secondary)
                 }
@@ -383,7 +382,7 @@ struct TransactionConfirmationCard: View {
                 }) {
                     HStack {
                         Image(systemName: "checkmark.circle.fill")
-                        Text("Confirm")
+                        Text("Confirm".localized)
                     }
                     .frame(maxWidth: .infinity)
                 }
@@ -396,7 +395,7 @@ struct TransactionConfirmationCard: View {
                     }) {
                         HStack {
                             Image(systemName: "xmark.circle")
-                            Text("Cancel Timer")
+                            Text("Cancel Timer".localized)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -407,7 +406,7 @@ struct TransactionConfirmationCard: View {
                     }) {
                         HStack {
                             Image(systemName: "pencil")
-                            Text("Edit")
+                            Text("Edit".localized)
                         }
                         .frame(maxWidth: .infinity)
                     }
@@ -434,11 +433,13 @@ struct TransactionConfirmationCard: View {
         countdown = 3
         
         timer = Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
-            if countdown > 0 {
-                countdown -= 1
-            } else {
-                stopTimer()
-                viewModel.confirmTransaction(context: context)
+            DispatchQueue.main.async {
+                if countdown > 0 {
+                    countdown -= 1
+                } else {
+                    stopTimer()
+                    viewModel.confirmTransaction(context: context)
+                }
             }
         }
     }

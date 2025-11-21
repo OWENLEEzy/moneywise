@@ -14,15 +14,29 @@ struct ReportsView: View {
     @State private var isGenerating = false
     @State private var errorMessage: String?
     @State private var showingAIChatSheet = false
+    @State private var refreshTrigger = 0
+    @ObservedObject private var languageManager = LanguageManager.shared
     
     enum VisualPeriod: String, CaseIterable {
         case thisWeek = "This Week"
         case thisMonth = "This Month"
+        
+        var localizedName: String {
+            return self.rawValue.localized
+        }
     }
     
     var currentInsight: AIInsight? {
+        // Force refresh trigger
+        _ = refreshTrigger
+        print("🔍 [DEBUG] currentInsight computed - insights.count: \(insights.count)")
+        if !insights.isEmpty {
+            print("🔍 [DEBUG] All insights types: \(insights.map { $0.type })")
+        }
         // AI Analysis always uses monthly data
-        insights.first { $0.type == .monthly }
+        let result = insights.first { $0.type == .monthly }
+        print("🔍 [DEBUG] Found monthly insight: \(result != nil)")
+        return result
     }
     
     var filteredTransactionsForVisual: [Transaction] {
@@ -54,16 +68,19 @@ struct ReportsView: View {
                     // AI Analysis Section
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Text("AI Analysis")
+                            Text("AI Analysis".localized)
                                 .font(.title2)
                                 .fontWeight(.bold)
                             Spacer()
                             if !monthlyTransactions.isEmpty, currentInsight != nil {
-                                Button(action: generateInsights) {
+                                Button(action: { 
+                                    print("🟢 [BUTTON] Refresh button pressed")
+                                    generateInsights()
+                                }) {
                                     HStack(spacing: 6) {
                                         Image(systemName: "arrow.clockwise")
                                             .font(.system(size: 14, weight: .semibold))
-                                        Text("Refresh")
+                                        Text("Refresh".localized)
                                             .font(.system(size: 14, weight: .medium))
                                     }
                                     .foregroundColor(.white)
@@ -82,10 +99,10 @@ struct ReportsView: View {
                                 Image(systemName: "brain")
                                     .font(.system(size: 48))
                                     .foregroundColor(.secondary)
-                                Text("AI currently doesn't have enough data")
+                                Text("AI currently doesn't have enough data".localized)
                                     .font(.headline)
                                     .foregroundColor(.secondary)
-                                Text("Start adding transactions to see insights here.")
+                                Text("Start adding transactions to see insights here.".localized)
                                     .font(.subheadline)
                                     .foregroundColor(.secondary)
                                     .multilineTextAlignment(.center)
@@ -103,11 +120,11 @@ struct ReportsView: View {
                                         VStack(alignment: .leading, spacing: 12) {
                                             HStack {
                                                 VStack(alignment: .leading, spacing: 4) {
-                                                    Text("Monthly Summary")
+                                                    Text("Monthly Summary".localized)
                                                         .font(.headline)
                                                         .foregroundColor(.primary)
                                                     
-                                                    Text("Updated: \(insight.generatedAt.formatted(date: .abbreviated, time: .shortened))")
+                                                    Text("Updated: \(insight.generatedAt.formatted(Date.FormatStyle(date: .abbreviated, time: .shortened, locale: LanguageManager.shared.locale)))")
                                                         .font(.caption)
                                                         .foregroundColor(.secondary)
                                                 }
@@ -138,7 +155,7 @@ struct ReportsView: View {
                                         // Insights
                                         if !insight.consumptionInsights.isEmpty {
                                             VStack(alignment: .leading, spacing: 12) {
-                                                Text("Key Insights")
+                                                Text("Key Insights".localized)
                                                     .font(.headline)
                                                     .foregroundColor(.primary)
                                                 
@@ -171,7 +188,7 @@ struct ReportsView: View {
                                             ProgressView()
                                                 .scaleEffect(1.5)
                                                 .progressViewStyle(CircularProgressViewStyle(tint: .blue))
-                                            Text("Analyzing your transactions...")
+                                            Text("Analyzing your transactions...".localized)
                                                 .font(.subheadline)
                                                 .foregroundColor(.secondary)
                                         }
@@ -182,7 +199,10 @@ struct ReportsView: View {
                                 }
                             } else {
                                 // Initial generation button
-                                Button(action: generateInsights) {
+                                Button(action: {
+                                    print("🟢 [BUTTON] Generate AI Insights button pressed")
+                                    generateInsights()
+                                }) {
                                     HStack(spacing: 8) {
                                         if isGenerating {
                                             ProgressView()
@@ -192,7 +212,7 @@ struct ReportsView: View {
                                             Image(systemName: "sparkles")
                                                 .font(.system(size: 16))
                                         }
-                                        Text(isGenerating ? "Analyzing..." : "Generate AI Insights")
+                                        Text(isGenerating ? "Analyzing...".localized : "Generate AI Insights".localized)
                                             .font(.system(size: 14, weight: .semibold))
                                     }
                                     .foregroundColor(.white)
@@ -223,16 +243,16 @@ struct ReportsView: View {
                     // Visual Analysis Section
                     VStack(alignment: .leading, spacing: 16) {
                         HStack {
-                            Text("Visual analysis")
+                            Text("Visual analysis".localized)
                                 .font(.title2)
                                 .fontWeight(.bold)
                             Spacer()
                         }
                         
                         // Time Period Selector
-                        Picker("Period", selection: $selectedVisualPeriod) {
+                        Picker("Period".localized, selection: $selectedVisualPeriod) {
                             ForEach(VisualPeriod.allCases, id: \.self) { period in
-                                Text(period.rawValue).tag(period)
+                                Text(period.localizedName).tag(period)
                             }
                         }
                         .pickerStyle(.segmented)
@@ -242,7 +262,7 @@ struct ReportsView: View {
                                 Image(systemName: "chart.bar.xaxis")
                                     .font(.system(size: 48))
                                     .foregroundColor(.secondary)
-                                Text("No data for this period")
+                                Text("No data for this period".localized)
                                     .font(.headline)
                                     .foregroundColor(.secondary)
                             }
@@ -264,7 +284,7 @@ struct ReportsView: View {
                 }
                 .padding()
             }
-            .navigationTitle("Reports")
+            .navigationTitle("Reports".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
@@ -273,7 +293,7 @@ struct ReportsView: View {
                     }) {
                         HStack(spacing: 4) {
                             Image(systemName: "chevron.left")
-                            Text("Back")
+                            Text("Back".localized)
                         }
                     }
                 }
@@ -289,28 +309,54 @@ struct ReportsView: View {
             .sheet(isPresented: $showingAIChatSheet) {
                 ReportAIChatView()
             }
+            .alert("Error".localized, isPresented: Binding(
+                get: { errorMessage != nil },
+                set: { _ in errorMessage = nil }
+            )) {
+                Button("OK", role: .cancel) { }
+            } message: {
+                if let errorMessage {
+                    Text(errorMessage)
+                }
+            }
         }
     }
     
     private func generateInsights() {
-        guard !isGenerating, !monthlyTransactions.isEmpty else { return }
+        print("🔵 [DEBUG] generateInsights called")
+        print("🔵 [DEBUG] isGenerating: \(isGenerating)")
+        print("🔵 [DEBUG] monthlyTransactions count: \(monthlyTransactions.count)")
         
+        guard !isGenerating, !monthlyTransactions.isEmpty else { 
+            print("❌ [DEBUG] Guard failed - isGenerating: \(isGenerating), isEmpty: \(monthlyTransactions.isEmpty)")
+            return 
+        }
+        
+        print("✅ [DEBUG] Starting insight generation...")
         isGenerating = true
-        Task {
+        Task { @MainActor in
             do {
+                print("🔵 [DEBUG] Creating AIService...")
                 let aiService = AIService(apiKeyProvider: {
-                    KeychainService().value(for: .geminiAPIKey)
+                    let key = KeychainService().value(for: .geminiAPIKey)
+                    print("🔵 [DEBUG] API Key exists: \(key != nil)")
+                    return key
                 })
                 
+                print("🔵 [DEBUG] Calling aiService.generateInsights...")
                 let result = try await aiService.generateInsights(
                     transactions: monthlyTransactions,
                     period: "current month",
                     context: context
                 )
                 
+                print("✅ [DEBUG] Got insights result - summary: \(result.summary)")
+                
                 // Delete old insight
                 if let oldInsight = currentInsight {
+                    print("🔵 [DEBUG] Deleting old insight")
                     context.delete(oldInsight)
+                    try? context.save()
                 }
                 
                 let newInsight = AIInsight(
@@ -321,11 +367,21 @@ struct ReportsView: View {
                     consumptionInsights: result.insights
                 )
                 context.insert(newInsight)
+                try context.save()
+                
+                // Force UI refresh
+                refreshTrigger += 1
+                
+                print("✅ [DEBUG] New insight saved to context")
+                print("🔵 [DEBUG] Current insights count: \(insights.count)")
+                print("🔵 [DEBUG] Refresh trigger: \(refreshTrigger)")
                 
             } catch {
+                print("❌ [DEBUG] Error: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
             isGenerating = false
+            print("🔵 [DEBUG] generateInsights completed - isGenerating: \(isGenerating)")
         }
     }
 }
@@ -336,15 +392,16 @@ struct ReportAIChatView: View {
     @Query private var transactions: [Transaction]
     @StateObject private var chatViewModel = ReportChatViewModel()
     @State private var inputText = ""
+    @ObservedObject private var languageManager = LanguageManager.shared
     
     var body: some View {
         VStack(spacing: 0) {
             // Header
             HStack {
-                Text("AI Report Assistant")
+                Text("AI Report Assistant".localized)
                     .font(.headline)
                 Spacer()
-                Button("Done") {
+                Button("Done".localized) {
                     dismiss()
                 }
             }
@@ -361,7 +418,7 @@ struct ReportAIChatView: View {
                     if chatViewModel.isLoading {
                         HStack {
                             ProgressView()
-                            Text("AI analyzing...")
+                            Text("AI analyzing...".localized)
                                 .foregroundColor(.secondary)
                         }
                         .padding()
@@ -373,7 +430,7 @@ struct ReportAIChatView: View {
             Divider()
             
             HStack {
-                TextField("Ask about your spending...", text: $inputText)
+                TextField("Ask about your spending...".localized, text: $inputText)
                     .textFieldStyle(RoundedBorderTextFieldStyle())
                 
                 Button(action: {
@@ -494,7 +551,7 @@ struct SpendingTrendChart: View {
             
             let formatter = DateFormatter()
             formatter.dateFormat = period == .weekly ? "E" : "d"
-            formatter.locale = Locale(identifier: "en_US")
+            formatter.locale = LanguageManager.shared.locale
             
             return SpendingData(day: formatter.string(from: date), value: total)
         }
@@ -516,7 +573,7 @@ struct SpendingTrendChart: View {
                         x: .value("Date", $0.day),
                         y: .value("Expense", $0.value)
                     )
-                    .foregroundStyle(.blue)
+                    .foregroundStyle(Color(red: 0.2, green: 0.8, blue: 0.6))
                 }
                 .frame(height: 150)
             }
@@ -564,7 +621,7 @@ struct ExpenseRatioPieChart: View {
             // Calculate opacity based on value relative to total (or just rank for distinctness)
             // Strategy: Darker for larger values.
             // Max opacity 1.0, Min opacity 0.3
-            let ratio = item.1 / totalExpense
+
             // Using opacity is simple but might overlap. Using saturation/brightness is better.
             // Let's use the base color and adjust opacity for the "monochromatic" feel requested.
             // "占比越多颜色越深" -> Higher ratio = Higher Opacity/Saturation
@@ -590,7 +647,7 @@ struct ExpenseRatioPieChart: View {
                     .frame(height: 150)
                     .frame(maxWidth: .infinity)
             } else {
-                HStack(spacing: 20) {
+                HStack(alignment: .center, spacing: 20) {
                     // Pie Chart
                     Chart(chartData) { item in
                         SectorMark(
@@ -601,7 +658,8 @@ struct ExpenseRatioPieChart: View {
                         .foregroundStyle(item.color)
                         .cornerRadius(4)
                     }
-                    .frame(height: 150)
+                    .frame(width: 200, height: 200)
+                    .padding(.vertical, 12)
                     
                     // Legend
                     ScrollView {
@@ -625,9 +683,9 @@ struct ExpenseRatioPieChart: View {
                             }
                         }
                     }
-                    .frame(maxHeight: 150)
+                    .frame(maxHeight: 200)
                 }
-                .padding(.vertical, 8)
+                .padding(.vertical, 12)
             }
         }
         .padding()
@@ -635,4 +693,3 @@ struct ExpenseRatioPieChart: View {
         .cornerRadius(12)
     }
 }
-

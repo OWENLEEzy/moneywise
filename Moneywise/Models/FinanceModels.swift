@@ -79,11 +79,12 @@ enum TransactionType: String, Codable, CaseIterable, Identifiable {
         SpendingCategory(name: "Healthcare", icon: "🏥", colorHex: "#EF4444", type: .expense),
         SpendingCategory(name: "Housing", icon: "🏠", colorHex: "#10B981", type: .expense),
         SpendingCategory(name: "Education", icon: "🎓", colorHex: "#6366F1", type: .expense),
+        SpendingCategory(name: "Savings", icon: "💰", colorHex: "#10B981", type: .expense),
         
         // Income Categories
-        SpendingCategory(name: "Salary", icon: "💰", colorHex: "#22C55E", type: .income),
+        SpendingCategory(name: "Salary", icon: "💵", colorHex: "#22C55E", type: .income),
         SpendingCategory(name: "Investment", icon: "📈", colorHex: "#14B8A6", type: .income),
-        SpendingCategory(name: "Other Income", icon: "💵", colorHex: "#059669", type: .income)
+        SpendingCategory(name: "Other Income", icon: "💸", colorHex: "#059669", type: .income)
     ]
 }
 

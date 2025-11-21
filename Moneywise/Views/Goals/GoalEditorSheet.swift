@@ -1,49 +1,58 @@
 import SwiftUI
 import SwiftData
 
-struct AddGoalSheet: View {
+struct GoalEditorSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     
-    @State private var goalName = ""
-    @State private var targetAmount = ""
-    @State private var deadline = Date().addingTimeInterval(30 * 24 * 3600) // 30 days from now
+    @Bindable var goal: Goal
+    
+    @State private var goalName: String
+    @State private var targetAmount: String
+    @State private var deadline: Date
     @State private var showError = false
     @State private var errorMessage = ""
+    
+    init(goal: Goal) {
+        self.goal = goal
+        _goalName = State(initialValue: goal.name)
+        _targetAmount = State(initialValue: "\(goal.targetAmount)")
+        _deadline = State(initialValue: goal.deadline)
+    }
     
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("Goal Information".localized)) {
-                    TextField("Goal Name".localized, text: $goalName)
+                Section(header: Text("Goal Details")) {
+                    TextField("Goal Name", text: $goalName)
                         .autocorrectionDisabled()
                     
-                    TextField("Target Amount".localized, text: $targetAmount)
+                    TextField("Target Amount", text: $targetAmount)
                         .keyboardType(.decimalPad)
                     
-                    DatePicker("Deadline".localized, selection: $deadline, displayedComponents: .date)
+                    DatePicker("Deadline", selection: $deadline, displayedComponents: .date)
                 }
                 
                 if showError {
                     Section {
                         Text(errorMessage)
-                            .foregroundColor(.red)
-                            .font(.caption)
+                        .foregroundColor(.red)
+                        .font(.caption)
                     }
                 }
             }
-            .navigationTitle("Create New Goal".localized)
+            .navigationTitle("Edit Goal".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("Cancel".localized) {
+                    Button("Cancel") {
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("Save".localized) {
-                        saveGoal()
+                    Button("Save") {
+                        saveChanges()
                     }
                     .disabled(goalName.isEmpty || targetAmount.isEmpty)
                 }
@@ -51,34 +60,29 @@ struct AddGoalSheet: View {
         }
     }
     
-    private func saveGoal() {
+    private func saveChanges() {
         guard let amount = Decimal(string: targetAmount) else {
             showError = true
-            errorMessage = "Please enter a valid amount".localized
+            errorMessage = "Please enter a valid amount"
             return
         }
         
         guard amount > 0 else {
             showError = true
-            errorMessage = "Amount must be greater than 0".localized
+            errorMessage = "Amount must be greater than 0"
             return
         }
         
-        let goal = Goal(
-            name: goalName,
-            targetAmount: amount,
-            currentAmount: 0,
-            deadline: deadline
-        )
-        
-        context.insert(goal)
+        goal.name = goalName
+        goal.targetAmount = amount
+        goal.deadline = deadline
         
         do {
             try context.save()
             dismiss()
         } catch {
             showError = true
-            errorMessage = "Save failed: ".localized + "\(error.localizedDescription)"
+            errorMessage = "Save failed: \(error.localizedDescription)"
         }
     }
 }

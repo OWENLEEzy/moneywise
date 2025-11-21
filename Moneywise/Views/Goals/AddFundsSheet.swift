@@ -5,6 +5,7 @@ struct AddFundsSheet: View {
     @Environment(\.dismiss) private var dismiss
     @Environment(\.modelContext) private var context
     @Bindable var goal: Goal
+    @ObservedObject private var languageManager = LanguageManager.shared
     
     @Query private var transactions: [Transaction]
     
@@ -43,16 +44,16 @@ struct AddFundsSheet: View {
     var body: some View {
         NavigationStack {
             Form {
-                Section(header: Text("目标信息")) {
+                Section(header: Text("Goal Information".localized)) {
                     VStack(alignment: .leading, spacing: 12) {
                         HStack {
-                            Text("当前进度")
+                            Text("Current Progress".localized)
                             Spacer()
                             Text(goal.currentAmount.coinFormatted)
                                 .fontWeight(.semibold)
                         }
                         HStack {
-                            Text("目标金额")
+                            Text("Target Amount".localized)
                             Spacer()
                             Text(goal.targetAmount.coinFormatted)
                                 .fontWeight(.semibold)
@@ -62,10 +63,10 @@ struct AddFundsSheet: View {
                     .foregroundColor(.secondary)
                 }
                 
-                Section(header: Text("本月可用结余")) {
+                Section(header: Text("Monthly Surplus".localized)) {
                     VStack(alignment: .leading, spacing: 8) {
                         HStack {
-                            Text("本月结余")
+                            Text("Available Surplus".localized)
                             Spacer()
                             Text(monthlySurplus.coinFormatted)
                                 .fontWeight(.bold)
@@ -74,26 +75,26 @@ struct AddFundsSheet: View {
                         .font(.headline)
                         
                         if monthlySurplus <= 0 {
-                            Text("本月暂无结余可用于储蓄")
+                            Text("No surplus available".localized)
                                 .font(.caption)
                                 .foregroundColor(.orange)
                         }
                     }
                 }
                 
-                Section(header: Text("选择添加方式")) {
-                    Picker("添加方式", selection: $usePercentage) {
-                        Text("固定金额").tag(false)
-                        Text("结余比例").tag(true)
+                Section(header: Text("Add Method".localized)) {
+                    Picker("Add Method".localized, selection: $usePercentage) {
+                        Text("Fixed Amount".localized).tag(false)
+                        Text("Percentage".localized).tag(true)
                     }
                     .pickerStyle(.segmented)
                 }
                 
                 if usePercentage {
-                    Section(header: Text("选择结余比例")) {
+                    Section(header: Text("Percentage".localized)) {
                         VStack(spacing: 16) {
                             HStack {
-                                Text("比例")
+                                Text("Percentage".localized)
                                 Spacer()
                                 Text("\(Int(percentageValue))%")
                                     .fontWeight(.bold)
@@ -115,10 +116,10 @@ struct AddFundsSheet: View {
                         }
                     }
                 } else {
-                    Section(header: Text("选择金额")) {
+                    Section(header: Text("Fixed Amount".localized)) {
                         VStack(spacing: 16) {
                             HStack {
-                                Text("金额")
+                                Text("Fixed Amount".localized)
                                 Spacer()
                                 Text(Decimal(sliderValue).coinFormatted)
                                     .fontWeight(.bold)
@@ -143,10 +144,10 @@ struct AddFundsSheet: View {
                 }
                 
                 if selectedAmount > 0 {
-                    Section(header: Text("预览")) {
+                    Section(header: Text("Preview".localized)) {
                         VStack(alignment: .leading, spacing: 8) {
                             HStack {
-                                Text("将添加")
+                                Text("Will Add".localized)
                                 Spacer()
                                 Text(selectedAmount.coinFormatted)
                                     .fontWeight(.semibold)
@@ -154,7 +155,7 @@ struct AddFundsSheet: View {
                             }
                             
                             HStack {
-                                Text("添加后总额")
+                                Text("New Total".localized)
                                 Spacer()
                                 Text((goal.currentAmount + selectedAmount).coinFormatted)
                                     .fontWeight(.semibold)
@@ -163,7 +164,7 @@ struct AddFundsSheet: View {
                             
                             let newProgress = min((goal.currentAmount + selectedAmount) / goal.targetAmount, 1.0)
                             HStack {
-                                Text("新进度")
+                                Text("New Progress".localized)
                                 Spacer()
                                 Text("\(Int((newProgress as NSDecimalNumber).doubleValue * 100))%")
                                     .fontWeight(.semibold)
@@ -182,17 +183,17 @@ struct AddFundsSheet: View {
                     }
                 }
             }
-            .navigationTitle("添加资金")
+            .navigationTitle("Add Funds".localized)
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .cancellationAction) {
-                    Button("取消") {
+                    Button("Cancel".localized) {
                         dismiss()
                     }
                 }
                 
                 ToolbarItem(placement: .confirmationAction) {
-                    Button("确认") {
+                    Button("Confirm".localized) {
                         addFunds()
                     }
                     .disabled(selectedAmount <= 0)
@@ -204,18 +205,29 @@ struct AddFundsSheet: View {
     private func addFunds() {
         guard selectedAmount > 0 else {
             showError = true
-            errorMessage = "金额必须大于0"
+            errorMessage = "Amount must be greater than 0"
             return
         }
         
         goal.currentAmount += selectedAmount
+        
+        // Create corresponding transaction
+        let transaction = Transaction(
+            amount: selectedAmount,
+            type: .expense,
+            category: try? context.category(named: "Savings", type: .expense),
+            account: "Cash",
+            date: Date(),
+            note: "Goal funding: \(goal.name)"
+        )
+        context.insert(transaction)
         
         do {
             try context.save()
             dismiss()
         } catch {
             showError = true
-            errorMessage = "保存失败: \(error.localizedDescription)"
+            errorMessage = "Save failed: \(error.localizedDescription)"
         }
     }
 }

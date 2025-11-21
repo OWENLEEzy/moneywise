@@ -42,6 +42,7 @@ struct MoneywiseApp: App {
                 BudgetReminder.self,
                 Goal.self,
                 AIUsageStats.self,
+                AIInsight.self,
                 SettingItem.self,
                 configurations: ModelConfiguration(isStoredInMemoryOnly: inMemory)
             )
@@ -62,7 +63,7 @@ struct MoneywiseApp: App {
             }
             
             if try context.fetch(FetchDescriptor<SettingItem>()).isEmpty {
-                try context.insert(SettingItem(key: .onboardingCompleted, value: "false"))
+                context.insert(SettingItem(key: .onboardingCompleted, value: "false"))
             }
         } catch {
             print("Bootstrap error: \(error)")

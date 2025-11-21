@@ -14,18 +14,22 @@ final class AIService {
     @MainActor
     func parse(text: String, context: ModelContext) async throws -> Transaction {
         let parsed = try await gemini.parseTransaction(prompt: text, apiKey: apiKeyProvider())
-        let category = try context.category(named: parsed.category, type: parsed.type)
+        
+        let amount = Decimal(parsed.amount ?? 0.0)
+        let type = parsed.type ?? .expense
+        let categoryName = parsed.category ?? "Uncategorized"
+        let category = try context.category(named: categoryName, type: type)
         
         return Transaction(
-            amount: Decimal(parsed.amount),
-            type: parsed.type,
+            amount: amount,
+            type: type,
             category: category,
-            account: parsed.account,
-            date: parsed.date,
-            note: parsed.note,
-            paymentMethod: parsed.paymentMethod,
+            account: parsed.account ?? "Cash",
+            date: parsed.date ?? Date(),
+            note: parsed.note ?? "",
+            paymentMethod: parsed.paymentMethod ?? "Cash",
             isAIGenerated: true,
-            confidence: parsed.confidence
+            confidence: parsed.confidence ?? 0.5
         )
     }
 
@@ -51,23 +55,87 @@ final class AIService {
         
         do {
             let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
-            guard let text = response.text.data(using: .utf8) else {
+            let rawText = response.text
+            print("📝 [AI Insights Debug] Raw Response: \(rawText)")
+            
+            // Improved JSON extraction using Regex
+            var jsonString = rawText
+            if let range = rawText.range(of: "(?s)\\{.*\\}", options: .regularExpression) {
+                jsonString = String(rawText[range])
+            }
+            
+            // Clean up
+            jsonString = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard let textData = jsonString.data(using: .utf8) else {
                 throw AIServiceError.decodingFailed
             }
-            return try JSONDecoder.gemini.decode(GeminiInsightResponse.self, from: text)
+            
+            return try JSONDecoder.gemini.decode(GeminiInsightResponse.self, from: textData)
         } catch {
+            print("❌ [AI Insights Debug] Error: \(error)")
             throw AIServiceError.decodingFailed
         }
+    }
+
+    @MainActor
+    func saveTransaction(_ response: GeminiResponse, in context: ModelContext) async throws {
+        let amount = Decimal(response.amount ?? 0.0)
+        let type = response.type ?? .expense
+        let categoryName = response.category ?? "Uncategorized"
+        let category = try context.category(named: categoryName, type: type)
+        
+        let transaction = Transaction(
+            amount: amount,
+            type: type,
+            category: category,
+            account: response.account ?? "Cash",
+            date: response.date ?? Date(),
+            note: response.note ?? "",
+            paymentMethod: response.paymentMethod ?? "Cash",
+            isAIGenerated: true,
+            confidence: response.confidence ?? 0.5
+        )
+        context.insert(transaction)
+        try context.save()
+    }
+
+    @MainActor
+    func chat(message: String, conversationId: String?) async throws -> (response: String, newConversationId: String) {
+        let apiKey = apiKeyProvider()
+        guard let apiKey else { throw AIServiceError.missingAPIKey }
+        
+        // In a real implementation, we would maintain conversation history using conversationId.
+        // For now, we'll just send the message as a single turn, but return a dummy ID.
+        let prompt = GeminiPromptBuilder().chatPrompt(message: message)
+        let data = try await gemini.send(payload: prompt, apiKey: apiKey)
+        
+        let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
+        return (response.text, conversationId ?? UUID().uuidString)
     }
 }
 
 final class GeminiService {
     private let session: URLSession
-    // Using stable Gemini 1.5 Flash model
-    private let baseURL = URL(string: "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash-001:generateContent")!
+    
+    private var baseURL: URL {
+        let customURL = UserDefaults.standard.string(forKey: "customBaseURL") ?? ""
+        let host = customURL.isEmpty ? "https://generativelanguage.googleapis.com" : customURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        let cleanHost = host.hasSuffix("/") ? String(host.dropLast()) : host
+        return URL(string: "\(cleanHost)/v1beta/models/gemini-2.5-flash:generateContent")!
+    }
 
-    init(session: URLSession = .shared) {
-        self.session = session
+    init() {
+        let config = URLSessionConfiguration.default
+        config.connectionProxyDictionary = [
+            "HTTPEnable": 1,
+            "HTTPProxy": "127.0.0.1",
+            "HTTPPort": 50960,
+            "HTTPSEnable": 1,
+            "HTTPSProxy": "127.0.0.1",
+            "HTTPSPort": 50960
+        ]
+        self.session = URLSession(configuration: config)
     }
 
     func parseTransaction(prompt: String, apiKey: String?) async throws -> GeminiResponse {
@@ -81,17 +149,31 @@ final class GeminiService {
         let data = try await send(payload: payload, apiKey: apiKey)
         do {
             let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
-            // Clean up the text response to ensure it's valid JSON
-            let cleanText = response.text.trimmingCharacters(in: .whitespacesAndNewlines)
-                .replacingOccurrences(of: "```json", with: "")
-                .replacingOccurrences(of: "```", with: "")
+            let rawText = response.text
+            print("📝 [AI Debug] Raw AI Response: \(rawText)")
             
-            guard let textData = cleanText.data(using: .utf8) else {
+            // Improved JSON extraction using Regex
+            var jsonString = rawText
+            if let range = rawText.range(of: "(?s)\\{.*\\}", options: .regularExpression) {
+                jsonString = String(rawText[range])
+            }
+            
+            // Clean up any potential markdown or whitespace
+            jsonString = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
+            
+            guard let textData = jsonString.data(using: .utf8) else {
                 throw AIServiceError.decodingFailed
             }
-            return try JSONDecoder.gemini.decode(GeminiResponse.self, from: textData)
+            
+            do {
+                return try JSONDecoder.gemini.decode(GeminiResponse.self, from: textData)
+            } catch {
+                print("❌ [AI Debug] JSON Decode Error: \(error)")
+                // Try to decode as partial response or different format if needed
+                throw AIServiceError.decodingFailed
+            }
         } catch {
-            print("Decoding error: \(error)")
+            print("❌ [AI Debug] Response Parsing Error: \(error)")
             throw AIServiceError.decodingFailed
         }
     }
@@ -221,18 +303,25 @@ struct GeminiPromptBuilder {
             generationConfig: .init(responseMimeType: "application/json")
         )
     }
+
+    func chatPrompt(message: String) -> Payload {
+        return Payload(
+            contents: [.init(parts: [.init(text: message)])],
+            generationConfig: .init(responseMimeType: "text/plain")
+        )
+    }
 }
 
 // Flattened GeminiResponse to match the JSON output from the AI
 struct GeminiResponse: Decodable {
-    let amount: Double
-    let type: TransactionType
-    let category: String
-    let account: String
-    let paymentMethod: String
-    let note: String
-    let confidence: Double
-    let date: Date
+    let amount: Double?
+    let type: TransactionType?
+    let category: String?
+    let account: String?
+    let paymentMethod: String?
+    let note: String?
+    let confidence: Double?
+    let date: Date?
 }
 
 struct GeminiTextResponse: Decodable {

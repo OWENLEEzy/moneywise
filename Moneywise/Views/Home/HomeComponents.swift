@@ -14,7 +14,7 @@ struct FloatingButtonBar: View {
                 VStack(spacing: 6) {
                     Image(systemName: "chart.pie.fill")
                         .font(.system(size: 20, weight: .medium))
-                    Text("Reports")
+                    Text("Reports".localized)
                         .font(.system(size: 11, weight: .medium))
                 }
                 .foregroundColor(.gray)
@@ -55,7 +55,7 @@ struct FloatingButtonBar: View {
                 VStack(spacing: 6) {
                     Image(systemName: "target")
                         .font(.system(size: 20, weight: .medium))
-                    Text("Goals")
+                    Text("Goals".localized)
                         .font(.system(size: 11, weight: .medium))
                 }
                 .foregroundColor(.gray)

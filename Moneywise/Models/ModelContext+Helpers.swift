@@ -8,7 +8,7 @@ extension ModelContext {
         if let match = try fetch(descriptor).first(where: { $0.name == name }) {
             return match
         }
-        let category = SpendingCategory(name: name, icon: "questionmark.circle", colorHex: "#94A3B8", type: type)
+        let category = SpendingCategory(name: name, icon: "❓", colorHex: "#94A3B8", type: type)
         insert(category)
         return category
     }
