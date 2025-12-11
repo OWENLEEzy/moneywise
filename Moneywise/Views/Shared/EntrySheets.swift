@@ -115,18 +115,14 @@ class AISmartEntryViewModel: ObservableObject {
         errorMessage = nil
         
         do {
-            print("🔍 [AI Debug] Starting AI parse...")
             let parsed = try await aiService.parse(text: textToProcess, context: context)
-            print("✅ [AI Debug] Parse successful")
             self.parsedTransaction = parsed
             self.conversation.append(Message(content: "I've parsed your transaction. Please confirm:".localized, isUser: false))
         } catch let error as AIServiceError {
-            print("❌ [AI Debug] AIServiceError: \(error.localizedDescription)")
             let errorMsg = "Sorry, I couldn't understand that. Error: \(error.localizedDescription)"
             self.conversation.append(Message(content: errorMsg, isUser: false))
             self.errorMessage = error.localizedDescription
         } catch {
-            print("❌ [AI Debug] Unknown error: \(error)")
             let errorMsg = "Sorry, I couldn't understand that. Error: \(error.localizedDescription)"
             self.conversation.append(Message(content: errorMsg, isUser: false))
             self.errorMessage = error.localizedDescription
@@ -157,6 +153,7 @@ struct AISmartEntrySheet: View {
     @StateObject private var speechService = SpeechRecognitionService()
     @State private var showingSpeechPermissionAlert = false
     @State private var showingManualEntry = false
+    @State private var transactionToEdit: Transaction?
     
     @Binding var toastMessage: String?
     
@@ -182,7 +179,10 @@ struct AISmartEntrySheet: View {
                                 .padding()
                         }
                         if let transaction = viewModel.parsedTransaction {
-                            TransactionConfirmationCard(transaction: transaction, viewModel: viewModel)
+                            TransactionConfirmationCard(transaction: transaction, viewModel: viewModel, onEdit: {
+                                transactionToEdit = transaction
+                                showingManualEntry = true
+                            })
                         }
                     }
                 }
@@ -260,6 +260,7 @@ struct AISmartEntrySheet: View {
                 
                 ToolbarItem(placement: .confirmationAction) {
                     Button(action: {
+                        transactionToEdit = nil
                         showingManualEntry = true
                     }) {
                         Image(systemName: "plus.circle.fill")
@@ -269,7 +270,7 @@ struct AISmartEntrySheet: View {
                 }
             }
             .sheet(isPresented: $showingManualEntry) {
-                ManualEntrySheet(toastMessage: $toastMessage)
+                ManualEntrySheet(toastMessage: $toastMessage, transactionToEdit: transactionToEdit)
                     .presentationDetents([.large])
             }
         }
@@ -302,6 +303,7 @@ struct MessageView: View {
 struct TransactionConfirmationCard: View {
     let transaction: Transaction
     @ObservedObject var viewModel: AISmartEntryViewModel
+    var onEdit: () -> Void
     @Environment(\.modelContext) private var context
     
     @State private var countdown: Int = 3
@@ -402,7 +404,7 @@ struct TransactionConfirmationCard: View {
                     .buttonStyle(.bordered)
                 } else {
                     Button(action: {
-                        // TODO: Implement edit functionality
+                        onEdit()
                     }) {
                         HStack {
                             Image(systemName: "pencil")

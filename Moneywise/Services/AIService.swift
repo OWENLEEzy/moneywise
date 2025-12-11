@@ -56,24 +56,8 @@ final class AIService {
         do {
             let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
             let rawText = response.text
-            print("📝 [AI Insights Debug] Raw Response: \(rawText)")
-            
-            // Improved JSON extraction using Regex
-            var jsonString = rawText
-            if let range = rawText.range(of: "(?s)\\{.*\\}", options: .regularExpression) {
-                jsonString = String(rawText[range])
-            }
-            
-            // Clean up
-            jsonString = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
-            
-            guard let textData = jsonString.data(using: .utf8) else {
-                throw AIServiceError.decodingFailed
-            }
-            
             return try JSONDecoder.gemini.decode(GeminiInsightResponse.self, from: textData)
         } catch {
-            print("❌ [AI Insights Debug] Error: \(error)")
             throw AIServiceError.decodingFailed
         }
     }
@@ -139,26 +123,46 @@ final class GeminiService {
     }
 
     func parseTransaction(prompt: String, apiKey: String?) async throws -> GeminiResponse {
-        print("🔑 [AI Debug] Checking API Key... Has key: \(apiKey != nil), Key length: \(apiKey?.count ?? 0)")
         guard let apiKey else { 
-            print("❌ [AI Debug] API Key is missing!")
             throw AIServiceError.missingAPIKey 
         }
         
         let payload = GeminiPromptBuilder().transactionPrompt(with: prompt)
         let data = try await send(payload: payload, apiKey: apiKey)
+        
         do {
             let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
+            let response = try JSONDecoder.gemini.decode(GeminiTextResponse.self, from: data)
             let rawText = response.text
-            print("📝 [AI Debug] Raw AI Response: \(rawText)")
             
-            // Improved JSON extraction using Regex
-            var jsonString = rawText
-            if let range = rawText.range(of: "(?s)\\{.*\\}", options: .regularExpression) {
-                jsonString = String(rawText[range])
+            // Check if response is empty
+            guard !rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else {
+                throw AIServiceError.decodingFailed
             }
             
-            // Clean up any potential markdown or whitespace
+            // Improved JSON extraction – strip markdown code fences first
+            var jsonString = rawText
+            
+            // Remove markdown code fences like ```json ... ``` or ``` ... ```
+            if let jsonBlockRange = rawText.range(of: "```(?:json)?\\s*([\\s\\S]*?)```", options: .regularExpression) {
+                let match = String(rawText[jsonBlockRange])
+                // Remove the ``` markers
+                jsonString = match
+                    .replacingOccurrences(of: "```json", with: "")
+                    .replacingOccurrences(of: "```", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+                // Remove the ``` markers
+                jsonString = match
+                    .replacingOccurrences(of: "```json", with: "")
+                    .replacingOccurrences(of: "```", with: "")
+                    .trimmingCharacters(in: .whitespacesAndNewlines)
+            } else if let range = rawText.range(of: "(?s)\\{.*\\}", options: .regularExpression) {
+                jsonString = String(rawText[range])
+            } else {
+                throw AIServiceError.decodingFailed
+            }
+            
+            // Clean up whitespace
             jsonString = jsonString.trimmingCharacters(in: .whitespacesAndNewlines)
             
             guard let textData = jsonString.data(using: .utf8) else {
@@ -166,17 +170,18 @@ final class GeminiService {
             }
             
             do {
-                return try JSONDecoder.gemini.decode(GeminiResponse.self, from: textData)
+                let decoded = try JSONDecoder.gemini.decode(GeminiResponse.self, from: textData)
+                return decoded
             } catch {
-                print("❌ [AI Debug] JSON Decode Error: \(error)")
-                // Try to decode as partial response or different format if needed
                 throw AIServiceError.decodingFailed
             }
+        } catch let error as AIServiceError {
+            throw error
         } catch {
-            print("❌ [AI Debug] Response Parsing Error: \(error)")
             throw AIServiceError.decodingFailed
         }
     }
+
 
     func analyze(question: String, dataset: String, apiKey: String?) async throws -> GeminiTextResponse {
         guard let apiKey else { throw AIServiceError.missingAPIKey }
@@ -190,6 +195,34 @@ final class GeminiService {
     }
 
     func send(payload: GeminiPromptBuilder.Payload, apiKey: String) async throws -> Data {
+        let maxRetries = 3
+        var lastError: Error = AIServiceError.invalidResponse
+        
+        for attempt in 1...maxRetries {
+            do {
+                return try await performRequest(payload: payload, apiKey: apiKey)
+            } catch AIServiceError.serverError(let code) {
+                if attempt < maxRetries {
+                    let delay = UInt64(pow(2.0, Double(attempt - 1))) * 1_000_000_000 // 1s, 2s, 4s
+                    try? await Task.sleep(nanoseconds: delay)
+                }
+            } catch AIServiceError.clientError(429, _) {
+                lastError = AIServiceError.clientError(429, "Rate limit exceeded. Please try again later.")
+                
+                if attempt < maxRetries {
+                    let delay = UInt64(pow(2.0, Double(attempt))) * 1_000_000_000 // 2s, 4s, 8s for rate limits
+                    try? await Task.sleep(nanoseconds: delay)
+                }
+            } catch {
+                // Non-retryable error
+                throw error
+            }
+        }
+        
+        throw lastError
+    }
+    
+    private func performRequest(payload: GeminiPromptBuilder.Payload, apiKey: String) async throws -> Data {
         var request = URLRequest(url: baseURL)
         request.httpMethod = "POST"
         request.addValue("application/json", forHTTPHeaderField: "Content-Type")
@@ -215,7 +248,9 @@ final class GeminiService {
                 errorMessage = errorText
             }
             
-            print("❌ [AI Debug] API Error \(httpResponse.statusCode): \(errorMessage)")
+            } else if let errorText = String(data: data, encoding: .utf8) {
+                errorMessage = errorText
+            }
             
             switch httpResponse.statusCode {
             case 400:
@@ -227,10 +262,10 @@ final class GeminiService {
                 throw AIServiceError.invalidAPIKey
             case 404:
                 throw AIServiceError.clientError(404, "Model not found or invalid endpoint. \(errorMessage)")
-            case 500..<600:
-                throw AIServiceError.serverError(httpResponse.statusCode)
             case 429:
                 throw AIServiceError.clientError(429, "Rate limit exceeded. Please try again later.")
+            case 500..<600:
+                throw AIServiceError.serverError(httpResponse.statusCode)
             default:
                 throw AIServiceError.clientError(httpResponse.statusCode, errorMessage)
             }
@@ -250,6 +285,7 @@ final class GeminiService {
         }
     }
 }
+
 
 // Helper for parsing Google errors
 struct GoogleErrorResponse: Decodable {
@@ -380,8 +416,43 @@ enum AIServiceError: Error, LocalizedError {
 extension JSONDecoder {
     static let gemini: JSONDecoder = {
         let decoder = JSONDecoder()
-        decoder.dateDecodingStrategy = .iso8601
         decoder.keyDecodingStrategy = .convertFromSnakeCase
+        
+        // Custom date decoding to handle both "YYYY-MM-DD" and full ISO8601
+        decoder.dateDecodingStrategy = .custom { decoder in
+            let container = try decoder.singleValueContainer()
+            let dateString = try container.decode(String.self)
+            
+            // Try full ISO8601 first
+            let iso8601Formatter = ISO8601DateFormatter()
+            iso8601Formatter.formatOptions = [.withInternetDateTime, .withFractionalSeconds]
+            if let date = iso8601Formatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try ISO8601 without fractional seconds
+            iso8601Formatter.formatOptions = [.withInternetDateTime]
+            if let date = iso8601Formatter.date(from: dateString) {
+                return date
+            }
+            
+            // Try date-only format "YYYY-MM-DD"
+            let dateOnlyFormatter = DateFormatter()
+            dateOnlyFormatter.dateFormat = "yyyy-MM-dd"
+            dateOnlyFormatter.locale = Locale(identifier: "en_US_POSIX")
+            dateOnlyFormatter.timeZone = TimeZone.current
+            if let date = dateOnlyFormatter.date(from: dateString) {
+                return date
+            }
+            
+            if let date = dateOnlyFormatter.date(from: dateString) {
+                return date
+            }
+            
+            throw DecodingError.dataCorruptedError(in: container, debugDescription: "Cannot decode date from '\(dateString)'")
+        }
+        
         return decoder
     }()
 }
+
