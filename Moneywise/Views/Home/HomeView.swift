@@ -114,7 +114,7 @@ struct HomeView: View {
             }
             .background(Color(.systemGroupedBackground).ignoresSafeArea())
             .navigationTitle("Today".localized + ", \(Date().formatted(.dateTime.month().day().locale(LanguageManager.shared.locale)))")
-            .navigationBarTitleDisplayMode(.large)
+            .navigationBarTitleDisplayMode(.inline)
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: { showSettings = true }) {
@@ -164,7 +164,7 @@ struct HeroCard: View {
             // Header with month navigation
             HStack {
                 VStack(alignment: .leading, spacing: 4) {
-                    Text("Assets overview".localized)
+                    Text("Overview".localized)
                         .font(.system(size: 16, weight: .semibold))
                         .foregroundColor(.white.opacity(0.9))
                     
@@ -175,12 +175,12 @@ struct HeroCard: View {
                             }
                         }) {
                             Image(systemName: "chevron.left")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.white.opacity(0.7))
                         }
                         
                         Text(monthYearText)
-                            .font(.system(size: 14, weight: .medium))
+                            .font(.system(size: 17, weight: .medium))
                             .foregroundColor(.white.opacity(0.8))
                         
                         Button(action: {
@@ -189,7 +189,7 @@ struct HeroCard: View {
                             }
                         }) {
                             Image(systemName: "chevron.right")
-                                .font(.system(size: 14, weight: .semibold))
+                                .font(.system(size: 16, weight: .semibold))
                                 .foregroundColor(.white.opacity(0.7))
                         }
                     }
@@ -206,7 +206,7 @@ struct HeroCard: View {
             
             VStack(alignment: .leading, spacing: 8) {
                 Text(summary.remainingBudget.coinFormatted)
-                    .font(.system(size: 42, weight: .bold))
+                    .font(.system(size: 34, weight: .bold))
                     .foregroundColor(.white)
                 
                 Text("This month's remaining budget".localized)
@@ -215,69 +215,70 @@ struct HeroCard: View {
             }
             .padding(.vertical, 8)
             
-            HStack(spacing: 12) {
+            HStack(spacing: 0) {
                 // Spent Card
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
                         Image(systemName: "flame.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.9))
                         Text("Spent".localized)
-                            .font(.system(size: 13, weight: .regular))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.white.opacity(0.8))
                     }
                     Text(summary.expenses.coinFormatted)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(16)
+                
+                Divider()
+                    .frame(height: 30)
+                    .background(Color.white.opacity(0.3))
+                    .padding(.horizontal, 8)
                 
                 // Saved to Goals Card
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
                         Image(systemName: "target")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.9))
                         Text("Saved".localized)
-                            .font(.system(size: 13, weight: .regular))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.white.opacity(0.8))
                     }
                     Text(summary.savedToGoals.coinFormatted)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(16)
+                
+                Divider()
+                    .frame(height: 30)
+                    .background(Color.white.opacity(0.3))
+                    .padding(.horizontal, 8)
                 
                 // Income Card
-                VStack(alignment: .leading, spacing: 8) {
+                VStack(alignment: .leading, spacing: 6) {
                     HStack(spacing: 4) {
                         Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 14))
-                            .foregroundColor(.white.opacity(0.8))
+                            .font(.system(size: 12))
+                            .foregroundColor(.white.opacity(0.9))
                         Text("Income".localized)
-                            .font(.system(size: 13, weight: .regular))
+                            .font(.system(size: 12, weight: .regular))
                             .foregroundColor(.white.opacity(0.8))
                     }
                     Text(summary.income.coinFormatted)
-                        .font(.system(size: 16, weight: .bold))
+                        .font(.system(size: 15, weight: .bold))
                         .foregroundColor(.white)
                         .lineLimit(1)
                         .minimumScaleFactor(0.8)
                 }
-                .padding(16)
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .background(Color.white.opacity(0.1))
-                .cornerRadius(16)
             }
 
             .padding(.top, 4)
