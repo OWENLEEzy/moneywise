@@ -6,8 +6,8 @@
 **Moneywise** is a native iOS SwiftUI application designed for **privacy and speed**. It operates **offline‑first** with no registration required, securing your data locally on your device while leveraging the power of **Google's Gemini API** for intelligent features. 🛡️
 
 ## Prototypes📱✨
-![AI Function Page](assets/AIfunctionpage.png)
-![Home Page](assets/homepage.png)
+<img src="assets/AIfunctionpage.png" width="200" />
+<img src="assets/homepage.png" width="200" />
 
 ## Core Features ✨
 
