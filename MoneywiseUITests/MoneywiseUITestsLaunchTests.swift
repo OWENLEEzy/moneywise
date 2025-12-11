@@ -2,8 +2,6 @@
 //  MoneywiseUITestsLaunchTests.swift
 //  MoneywiseUITests
 //
-//  Created by Owen Lee Zhao Yi on 20/11/2025.
-//
 
 import XCTest
 
