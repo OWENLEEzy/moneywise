@@ -13,7 +13,7 @@ final class DeeplinkRouter: ObservableObject {
 
     func handleURL(_ url: URL) -> Bool {
         guard let components = URLComponents(url: url, resolvingAgainstBaseURL: false),
-              components.scheme == "gembudget",
+              components.scheme == "moneywise",
               let host = components.host else {
             return false
         }

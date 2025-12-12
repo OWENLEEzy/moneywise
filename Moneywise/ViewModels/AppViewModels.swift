@@ -17,7 +17,7 @@ import Observation
         do {
             goals = try context.fetch(goalsDescriptor)
         } catch {
-            print("Goal fetch error: \(error)")
+            // Goal fetch error
         }
     }
 

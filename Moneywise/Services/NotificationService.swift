@@ -8,7 +8,6 @@ final class NotificationScheduler: NSObject, UNUserNotificationCenterDelegate {
         do {
             return try await center.requestAuthorization(options: [.alert, .badge, .sound])
         } catch {
-            print("Notification authorization error: \(error)")
             return false
         }
     }
@@ -30,9 +29,8 @@ final class NotificationScheduler: NSObject, UNUserNotificationCenterDelegate {
         
         do {
             try await center.add(request)
-            print("Scheduled daily reminder for \(components.hour ?? 0):\(components.minute ?? 0)")
         } catch {
-            print("Failed to schedule daily reminder: \(error)")
+            // Failed to schedule daily reminder
         }
     }
 
@@ -66,9 +64,8 @@ final class NotificationScheduler: NSObject, UNUserNotificationCenterDelegate {
         
         do {
             try await center.add(request)
-            print("Scheduled weekly reminder for weekday \(dayOfWeek) at \(timeComponents.hour ?? 0):\(timeComponents.minute ?? 0)")
         } catch {
-            print("Failed to schedule weekly reminder: \(error)")
+            // Failed to schedule weekly reminder
         }
     }
     

@@ -2,7 +2,7 @@ import Foundation
 import Security
 
 enum KeychainKey: String {
-    case geminiAPIKey = "com.owen.gembudget.gemini"
+    case geminiAPIKey = "com.owen.moneywise.gemini"
 }
 
 final class KeychainService {

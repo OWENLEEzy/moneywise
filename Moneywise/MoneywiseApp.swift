@@ -66,7 +66,7 @@ struct MoneywiseApp: App {
                 context.insert(SettingItem(key: .onboardingCompleted, value: "false"))
             }
         } catch {
-            print("Bootstrap error: \(error)")
+            // Bootstrap error
         }
     }
 }
@@ -129,7 +129,6 @@ extension ModelContext {
         
         if hasChanges {
             try save()
-            print("Migrated categories to emojis")
         }
     }
 }

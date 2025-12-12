@@ -40,7 +40,7 @@ final class CSVService {
             return row
         }
         let csv = header + rows.joined(separator: "\n")
-        let url = FileManager.default.temporaryDirectory.appendingPathComponent("GemBudget-\(UUID().uuidString).csv")
+        let url = FileManager.default.temporaryDirectory.appendingPathComponent("Moneywise-\(UUID().uuidString).csv")
         try csv.write(to: url, atomically: true, encoding: .utf8)
         return url
     }

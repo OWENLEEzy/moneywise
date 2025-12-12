@@ -401,6 +401,7 @@
 				DEVELOPMENT_TEAM = 8UN2ADHH83;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Moneywise/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires access to the microphone for voice input and speech recognition.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to transcribe voice input for transaction entry.";
@@ -441,6 +442,7 @@
 				DEVELOPMENT_TEAM = 8UN2ADHH83;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_FILE = Moneywise/Info.plist;
 				INFOPLIST_KEY_LSApplicationCategoryType = "public.app-category.finance";
 				INFOPLIST_KEY_NSMicrophoneUsageDescription = "This app requires access to the microphone for voice input and speech recognition.";
 				INFOPLIST_KEY_NSSpeechRecognitionUsageDescription = "This app uses speech recognition to transcribe voice input for transaction entry.";

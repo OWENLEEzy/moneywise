@@ -29,13 +29,8 @@ struct ReportsView: View {
     var currentInsight: AIInsight? {
         // Force refresh trigger
         _ = refreshTrigger
-        print("🔍 [DEBUG] currentInsight computed - insights.count: \(insights.count)")
-        if !insights.isEmpty {
-            print("🔍 [DEBUG] All insights types: \(insights.map { $0.type })")
-        }
         // AI Analysis always uses monthly data
         let result = insights.first { $0.type == .monthly }
-        print("🔍 [DEBUG] Found monthly insight: \(result != nil)")
         return result
     }
     
@@ -74,7 +69,6 @@ struct ReportsView: View {
                             Spacer()
                             if !monthlyTransactions.isEmpty, currentInsight != nil {
                                 Button(action: { 
-                                    print("🟢 [BUTTON] Refresh button pressed")
                                     generateInsights()
                                 }) {
                                     HStack(spacing: 6) {
@@ -200,7 +194,6 @@ struct ReportsView: View {
                             } else {
                                 // Initial generation button
                                 Button(action: {
-                                    print("🟢 [BUTTON] Generate AI Insights button pressed")
                                     generateInsights()
                                 }) {
                                     HStack(spacing: 8) {
@@ -323,45 +316,32 @@ struct ReportsView: View {
     }
     
     private func generateInsights() {
-        print("🔵 [DEBUG] generateInsights called")
-        print("🔵 [DEBUG] isGenerating: \(isGenerating)")
-        print("🔵 [DEBUG] monthlyTransactions count: \(monthlyTransactions.count)")
-        
         guard !isGenerating, !monthlyTransactions.isEmpty else { 
-            print("❌ [DEBUG] Guard failed - isGenerating: \(isGenerating), isEmpty: \(monthlyTransactions.isEmpty)")
             return 
         }
         
-        print("✅ [DEBUG] Starting insight generation...")
         isGenerating = true
         Task { @MainActor in
             do {
-                print("🔵 [DEBUG] Creating AIService...")
                 let aiService = AIService(apiKeyProvider: {
-                    let key = KeychainService().value(for: .geminiAPIKey)
-                    print("🔵 [DEBUG] API Key exists: \(key != nil)")
-                    return key
+                    KeychainService().value(for: .geminiAPIKey)
                 })
                 
-                print("🔵 [DEBUG] Calling aiService.generateInsights...")
                 let result = try await aiService.generateInsights(
                     transactions: monthlyTransactions,
                     period: "current month",
                     context: context
                 )
                 
-                print("✅ [DEBUG] Got insights result - summary: \(result.summary)")
-                
                 // Delete old insight
                 if let oldInsight = currentInsight {
-                    print("🔵 [DEBUG] Deleting old insight")
                     context.delete(oldInsight)
                     try? context.save()
                 }
                 
                 let newInsight = AIInsight(
                     type: .monthly,
-                    startDate: Date(), // Simplified for now
+                    startDate: Date(),
                     endDate: Date(),
                     summary: result.summary,
                     consumptionInsights: result.insights
@@ -372,16 +352,10 @@ struct ReportsView: View {
                 // Force UI refresh
                 refreshTrigger += 1
                 
-                print("✅ [DEBUG] New insight saved to context")
-                print("🔵 [DEBUG] Current insights count: \(insights.count)")
-                print("🔵 [DEBUG] Refresh trigger: \(refreshTrigger)")
-                
             } catch {
-                print("❌ [DEBUG] Error: \(error.localizedDescription)")
                 errorMessage = error.localizedDescription
             }
             isGenerating = false
-            print("🔵 [DEBUG] generateInsights completed - isGenerating: \(isGenerating)")
         }
     }
 }

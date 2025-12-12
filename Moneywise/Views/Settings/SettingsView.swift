@@ -424,7 +424,6 @@ struct SettingsView: View {
                 
                 let testURL = URL(string: "\(cleanBaseURL)/v1beta/models/gemini-2.5-flash:generateContent?key=\(key)")!
                 
-                print("🌐 [Connection Test] Testing URL: \(testURL.absoluteString)")
                 var request = URLRequest(url: testURL)
                 request.httpMethod = "POST"
                 request.addValue("application/json", forHTTPHeaderField: "Content-Type")

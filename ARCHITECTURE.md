@@ -16,8 +16,8 @@ The application follows the **MVVM (Model-View-ViewModel)** architectural patter
 ## Architecture Layers
 
 ```
-GemBudget
-├── GemBudgetApp.swift        // SwiftData Container, Dependency Injection
+Moneywise
+├── MoneywiseApp.swift        // SwiftData Container, Dependency Injection
 ├── Models/                   // @Model Data Structures, Environment Keys
 ├── ViewModels/               // Business State (GoalManager, AI Config, Routing)
 ├── Services/                 // AI/Keychain/CSV/Notification Logic
