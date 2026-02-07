@@ -1,0 +1,210 @@
+/* 
+  Localizable.strings
+  Moneywise
+
+  Created by Moneywise Team.
+*/
+
+// General
+"Cancel" = "Cancel";
+"Done" = "Done";
+"Save" = "Save";
+"Confirm" = "Confirm";
+"Error" = "Error";
+"Success" = "Success";
+"Today" = "Today";
+
+// Home
+"Overview" = "Overview";
+"This month's remaining budget" = "This month's remaining budget";
+"Spent" = "Spent";
+"Income" = "Income";
+"Saved to Goals" = "Saved to Goals";
+"Your Goals" = "Your Goals";
+"No goals yet. Set one up!" = "No goals yet. Set one up!";
+"Due Soon" = "Due Soon";
+"%d Days" = "%d Days";
+
+// Goals
+"Goals" = "Goals";
+"Create New Goal" = "Create New Goal";
+"Goal Name" = "Goal Name";
+"Target Amount" = "Target Amount";
+"Deadline" = "Deadline";
+"Goal Details" = "Goal Details";
+"Add Funds" = "Add Funds";
+"Current Progress" = "Current Progress";
+"SAVING" = "SAVING";
+"COMPLETE" = "COMPLETE";
+"Goal Information" = "Goal Information";
+"Monthly Surplus" = "Monthly Surplus";
+"Available Surplus" = "Available Surplus";
+"No surplus available" = "No surplus available";
+"Add Method" = "Add Method";
+"Fixed Amount" = "Fixed Amount";
+"Percentage" = "Percentage";
+"Preview" = "Preview";
+"Will Add" = "Will Add";
+"New Total" = "New Total";
+"New Progress" = "New Progress";
+"Please enter a valid amount" = "Please enter a valid amount";
+"Amount must be greater than 0" = "Amount must be greater than 0";
+"Save failed: " = "Save failed: ";
+
+// Settings
+"Settings" = "Settings";
+"AI Settings" = "AI Settings";
+"API Key Configured" = "API Key Configured";
+"API Key Not Set" = "API Key Not Set";
+"Data Settings" = "Data Settings";
+"Import/Export, Budgets, Categories" = "Import/Export, Budgets, Categories";
+"General Settings" = "General Settings";
+"Theme, Language, Notifications" = "Theme, Language, Notifications";
+"Quick Stats" = "Quick Stats";
+"Total Transactions" = "Total Transactions";
+"Manage Budgets" = "Manage Budgets";
+"Set spending limits for categories or overall budget" = "Set spending limits for categories or overall budget";
+"主题 / Theme" = "主题 / Theme";
+"Gemini API Configuration" = "Gemini API Configuration";
+"API Key Saved" = "API Key Saved";
+"API Key Not Configured" = "API Key Not Configured";
+"Enter API Key" = "Enter API Key";
+"Paste your Gemini API Key" = "Paste your Gemini API Key";
+"Custom API URL (Optional)" = "Custom API URL (Optional)";
+"Useful for proxies or custom gateways" = "Useful for proxies or custom gateways";
+"Save Configuration" = "Save Configuration";
+"Test Connection" = "Test Connection";
+"Testing..." = "Testing...";
+"Connection Successful! API Key is valid" = "Connection Successful! API Key is valid";
+"Connection Failed" = "Connection Failed";
+"Help" = "Help";
+"Get Gemini API Key" = "Get Gemini API Key";
+"Visit Google AI Studio" = "Visit Google AI Studio";
+"Instructions" = "Instructions";
+"1. Visit the link above to get a free Gemini API Key" = "1. Visit the link above to get a free Gemini API Key";
+"2. Copy the API Key and paste it into the input box" = "2. Copy the API Key and paste it into the input box";
+"3. Click 'Save API Key'" = "3. Click 'Save API Key'";
+"4. Click 'Test Connection' to verify if the API Key is valid" = "4. Click 'Test Connection' to verify if the API Key is valid";
+"5. You can now use the AI accounting features!" = "5. You can now use the AI accounting features!";
+"Data Management" = "Data Management";
+"Exporting..." = "Exporting...";
+"Importing..." = "Importing...";
+"Export Transactions" = "Export Transactions";
+"Import Transactions" = "Import Transactions";
+"Import Completed" = "Import Completed";
+"No transaction data" = "No transaction data";
+"Category Management" = "Category Management";
+"Manage Categories" = "Manage Categories";
+"Customize spending and income categories with emoji icons" = "Customize spending and income categories with emoji icons";
+"Notifications" = "Notifications";
+"Daily Log Reminder" = "Daily Log Reminder";
+"Get reminded to log your expenses" = "Get reminded to log your expenses";
+"Reminder Time" = "Reminder Time";
+"Weekly Goal Progress" = "Weekly Goal Progress";
+"Track your savings progress" = "Track your savings progress";
+"Day of Week" = "Day of Week";
+"Time" = "Time";
+"Language" = "Language";
+"About" = "About";
+"AI Model" = "AI Model";
+"Version" = "Version";
+
+// Days
+"Monday" = "Monday";
+"Tuesday" = "Tuesday";
+"Wednesday" = "Wednesday";
+"Thursday" = "Thursday";
+"Friday" = "Friday";
+"Saturday" = "Saturday";
+"Sunday" = "Sunday";
+// Reports
+"AI Analysis" = "AI Analysis";
+"Refresh" = "Refresh";
+"AI currently doesn't have enough data" = "AI currently doesn't have enough data";
+"Start adding transactions to see insights here." = "Start adding transactions to see insights here.";
+"Monthly Summary" = "Monthly Summary";
+"Key Insights" = "Key Insights";
+"Analyzing your transactions..." = "Analyzing your transactions...";
+"Generate AI Insights" = "Generate AI Insights";
+"Analyzing..." = "Analyzing...";
+"Visual analysis" = "Visual analysis";
+"Period" = "Period";
+"This Week" = "This Week";
+"This Month" = "This Month";
+"No data for this period" = "No data for this period";
+"Spending Trend" = "Spending Trend";
+"No data available" = "No data available";
+"Expense Ratio" = "Expense Ratio";
+"No expense data available" = "No expense data available";
+"AI Report Assistant" = "AI Report Assistant";
+"AI analyzing..." = "AI analyzing...";
+// Category Management
+"Delete" = "Delete";
+"Edit" = "Edit";
+"Categories" = "Categories";
+"New Category" = "New Category";
+"Edit Category" = "Edit Category";
+"Name" = "Name";
+"Icon (Emoji)" = "Icon (Emoji)";
+"Type" = "Type";
+// Import Errors
+"Import Error" = "Import Error";
+"Could not access the selected file." = "Could not access the selected file.";
+"Successfully imported %d records, skipped %d duplicates" = "Successfully imported %d records, skipped %d duplicates";
+"Total %d records" = "Total %d records";
+"Sunday" = "Sunday";
+
+// Transactions View
+"Transactions" = "Transactions";
+"Search transactions" = "Search transactions";
+"All" = "All";
+"Expense" = "Expense";
+"Income" = "Income";
+"No transactions yet" = "No transactions yet";
+"Transactions will appear here once you start tracking" = "Transactions will appear here once you start tracking";
+
+// AI & Reports
+"Reports" = "Reports";
+"AI Entry" = "AI Entry";
+"AI Recording" = "AI Recording";
+"AI Assistant" = "AI Assistant";
+"Recent Transactions" = "Recent Transactions";
+"Budget Management" = "Budget Management";
+"Edit Goal" = "Edit Goal";
+"Send" = "Send";
+"Parsed Transaction" = "Parsed Transaction";
+"Ask about your finances..." = "Ask about your finances...";
+"Amount:" = "Amount:";
+"Category:" = "Category:";
+"Date:" = "Date:";
+"Type:" = "Type:";
+"Note:" = "Note:";
+"Transaction Details" = "Transaction Details";
+"Amount" = "Amount";
+"Account" = "Account";
+"Manual Entry" = "Manual Entry";
+"Edit Transaction" = "Edit Transaction";
+"Close" = "Close";
+"New Transaction" = "New Transaction";
+"Save Changes" = "Save Changes";
+"Transaction Updated" = "Transaction Updated";
+"Transaction Saved" = "Transaction Saved";
+"Welcome! How can I help you?" = "Welcome! How can I help you?";
+"I've parsed your transaction. Please confirm:" = "I've parsed your transaction. Please confirm:";
+"Transaction saved!" = "Transaction saved!";
+"Just bought a bento box..." = "Just bought a bento box...";
+"Microphone Permission Required" = "Microphone Permission Required";
+"Please enable microphone access in Settings to use voice features." = "Please enable microphone access in Settings to use voice features.";
+"AI Error" = "AI Error";
+"Confirm Transaction" = "Confirm Transaction";
+"Uncategorized" = "Uncategorized";
+"Time:" = "Time:";
+"Auto-confirming in %ds" = "Auto-confirming in %ds";
+"Low confidence, please check details" = "Low confidence, please check details";
+"Confirm" = "Confirm";
+"Cancel Timer" = "Cancel Timer";
+"Recurring Transaction Reminder" = "Recurring Transaction Reminder";
+"Will be charged in %d days: %@ ¥%.2f" = "Will be charged in %d days: %@ ¥%.2f";
+"Will be received in %d days: %@ ¥%.2f" = "Will be received in %d days: %@ ¥%.2f";
+
+

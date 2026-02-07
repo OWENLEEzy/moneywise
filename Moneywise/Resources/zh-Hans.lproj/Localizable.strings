@@ -1,0 +1,209 @@
+/* 
+  Localizable.strings
+  Moneywise
+
+  Created by Moneywise Team.
+*/
+
+// General
+"Cancel" = "取消";
+"Done" = "完成";
+"Save" = "保存";
+"Confirm" = "确认";
+"Error" = "错误";
+"Success" = "成功";
+"Today" = "今日";
+
+// Home
+"Overview" = "概览";
+"This month's remaining budget" = "本月剩余预算";
+"Spent" = "支出";
+"Income" = "收入";
+"Saved to Goals" = "存入目标";
+"Your Goals" = "你的目标";
+"No goals yet. Set one up!" = "暂无目标，快去创建一个吧！";
+"Due Soon" = "即将到期";
+"%d Days" = "%d 天";
+
+// Goals
+"Goals" = "目标";
+"Create New Goal" = "创建新目标";
+"Goal Name" = "目标名称";
+"Target Amount" = "目标金额";
+"Deadline" = "截止日期";
+"Goal Details" = "目标详情";
+"Add Funds" = "存入资金";
+"Current Progress" = "当前进度";
+"SAVING" = "储蓄中";
+"COMPLETE" = "已完成";
+"Goal Information" = "目标信息";
+"Monthly Surplus" = "本月结余";
+"Available Surplus" = "可用结余";
+"No surplus available" = "本月暂无结余可用于储蓄";
+"Add Method" = "添加方式";
+"Fixed Amount" = "固定金额";
+"Percentage" = "结余比例";
+"Preview" = "预览";
+"Will Add" = "将存入";
+"New Total" = "存入后总额";
+"New Progress" = "新进度";
+"Please enter a valid amount" = "请输入有效的金额";
+"Amount must be greater than 0" = "金额必须大于0";
+"Save failed: " = "保存失败: ";
+
+// Settings
+"Settings" = "设置";
+"AI Settings" = "AI 设置";
+"API Key Configured" = "API Key 已配置";
+"API Key Not Set" = "API Key 未设置";
+"Data Settings" = "数据设置";
+"Import/Export, Budgets, Categories" = "导入/导出、预算、分类";
+"General Settings" = "通用设置";
+"Theme, Language, Notifications" = "主题、语言、通知";
+"Quick Stats" = "快速统计";
+"Total Transactions" = "总交易数";
+"Manage Budgets" = "管理预算";
+"Set spending limits for categories or overall budget" = "为分类或总预算设置支出限额";
+"Gemini API Configuration" = "Gemini API 配置";
+"API Key Saved" = "API Key 已保存";
+"API Key Not Configured" = "API Key 未配置";
+"Enter API Key" = "输入 API Key";
+"Paste your Gemini API Key" = "粘贴你的 Gemini API Key";
+"Custom API URL (Optional)" = "自定义 API 地址（可选）";
+"Useful for proxies or custom gateways" = "用于代理或自定义网关";
+"Save Configuration" = "保存配置";
+"Test Connection" = "测试连接";
+"Testing..." = "测试中...";
+"Connection Successful! API Key is valid" = "连接成功！API Key 有效";
+"Connection Failed" = "连接失败";
+"Help" = "帮助";
+"Get Gemini API Key" = "获取 Gemini API Key";
+"Visit Google AI Studio" = "访问 Google AI Studio";
+"Instructions" = "操作指南";
+"1. Visit the link above to get a free Gemini API Key" = "1. 点击上方链接获取免费的 Gemini API Key";
+"2. Copy the API Key and paste it into the input box" = "2. 复制 API Key 并粘贴到输入框";
+"3. Click 'Save API Key'" = "3. 点击\"保存配置\"";
+"4. Click 'Test Connection' to verify if the API Key is valid" = "4. 点击\"测试连接\"验证 API Key 是否有效";
+"5. You can now use the AI accounting features!" = "5. 现在可以使用 AI 记账功能了！";
+"Data Management" = "数据管理";
+"Exporting..." = "导出中...";
+"Importing..." = "导入中...";
+"Export Transactions" = "导出交易记录";
+"Import Transactions" = "导入交易记录";
+"Import Completed" = "导入完成";
+"No transaction data" = "暂无交易数据";
+"Category Management" = "分类管理";
+"Manage Categories" = "管理分类";
+"Customize spending and income categories with emoji icons" = "使用 emoji 图标自定义支出和收入分类";
+"Notifications" = "通知提醒";
+"Daily Log Reminder" = "每日记账提醒";
+"Get reminded to log your expenses" = "记得记录今天的收支哦";
+"Reminder Time" = "提醒时间";
+"Weekly Goal Progress" = "每周目标进度";
+"Track your savings progress" = "关注你的储蓄目标进度";
+"Day of Week" = "提醒日";
+"Time" = "时间";
+"Language" = "语言";
+"About" = "关于";
+"AI Model" = "AI 模型";
+"Version" = "版本";
+
+// Days
+"Monday" = "周一";
+"Tuesday" = "周二";
+"Wednesday" = "周三";
+"Thursday" = "周四";
+"Friday" = "周五";
+"Saturday" = "周六";
+"Sunday" = "周日";
+// Reports
+"AI Analysis" = "AI 分析";
+"Refresh" = "刷新";
+"AI currently doesn't have enough data" = "AI 暂时没有足够的数据";
+"Start adding transactions to see insights here." = "开始记录交易以查看见解。";
+"Monthly Summary" = "月度总结";
+"Key Insights" = "关键见解";
+"Analyzing your transactions..." = "正在分析您的交易...";
+"Generate AI Insights" = "生成 AI 见解";
+"Analyzing..." = "分析中...";
+"Visual analysis" = "可视化分析";
+"Period" = "周期";
+"This Week" = "本周";
+"This Month" = "本月";
+"No data for this period" = "该周期无数据";
+"Spending Trend" = "支出趋势";
+"No data available" = "暂无数据";
+"Expense Ratio" = "支出占比";
+"No expense data available" = "暂无支出数据";
+"AI Report Assistant" = "AI 报表助手";
+"AI analyzing..." = "AI 正在分析...";
+// Category Management
+"Delete" = "删除";
+"Edit" = "编辑";
+"Categories" = "分类";
+"New Category" = "新建分类";
+"Edit Category" = "编辑分类";
+"Name" = "名称";
+"Icon (Emoji)" = "图标 (Emoji)";
+"Type" = "类型";
+// Import Errors
+"Import Error" = "导入错误";
+"Could not access the selected file." = "无法访问所选文件。";
+"Successfully imported %d records, skipped %d duplicates" = "成功导入 %d 条记录，跳过 %d 条重复项";
+"Total %d records" = "共 %d 条记录";
+"Sunday" = "周日";
+
+// Transactions View
+"Transactions" = "交易记录";
+"Search transactions" = "搜索交易";
+"All" = "全部";
+"Expense" = "支出";
+"Income" = "收入";
+"No transactions yet" = "暂无交易记录";
+"Transactions will appear here once you start tracking" = "开始记账后，交易记录将显示在这里";
+
+// AI & Reports
+"Reports" = "报表";
+"AI Entry" = "AI 记账";
+"AI Recording" = "AI 录入";
+"AI Assistant" = "AI 助手";
+"Recent Transactions" = "最近交易";
+"Budget Management" = "预算管理";
+"Edit Goal" = "编辑目标";
+"Send" = "发送";
+"Parsed Transaction" = "解析结果";
+"Ask about your finances..." = "询问关于你的财务状况...";
+"Amount:" = "金额:";
+"Category:" = "分类:";
+"Date:" = "日期:";
+"Type:" = "类型:";
+"Note:" = "备注:";
+"Transaction Details" = "交易详情";
+"Amount" = "金额";
+"Account" = "账户";
+"Manual Entry" = "手动记账";
+"Edit Transaction" = "编辑交易";
+"Close" = "关闭";
+"New Transaction" = "新建交易";
+"Save Changes" = "保存更改";
+"Transaction Updated" = "交易已更新";
+"Transaction Saved" = "交易已保存";
+"Welcome! How can I help you?" = "欢迎！有什么我可以帮你的吗？";
+"I've parsed your transaction. Please confirm:" = "已解析您的交易，请确认：";
+"Transaction saved!" = "交易已保存！";
+"Just bought a bento box..." = "刚刚买了一份便当...";
+"Microphone Permission Required" = "需要麦克风权限";
+"Please enable microphone access in Settings to use voice features." = "请在设置中启用麦克风权限以使用语音功能。";
+"AI Error" = "AI 错误";
+"Confirm Transaction" = "确认交易";
+"Uncategorized" = "未分类";
+"Time:" = "时间:";
+"Auto-confirming in %ds" = "%d秒后自动确认";
+"Low confidence, please check details" = "置信度较低，请检查详情";
+"Confirm" = "确认";
+"Cancel Timer" = "取消倒计时";
+"Recurring Transaction Reminder" = "定期交易提醒";
+"Will be charged in %d days: %@ ¥%.2f" = "%@ 将在 %d 天后扣款 ¥%.2f";
+"Will be received in %d days: %@ ¥%.2f" = "%@ 将在 %d 天后到账 ¥%.2f";
+
+

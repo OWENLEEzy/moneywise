@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+	<!-- App Information -->
+	<key>CFBundleName</key>
+	<string>Moneywise</string>
+	<key>CFBundleDisplayName</key>
+	<string>Moneywise</string>
+	<key>CFBundleVersion</key>
+	<string>1.0.0</string>
+	<key>CFBundleShortVersionString</key>
+	<string>1.0.0</string>
+
+	<!-- URL Scheme for Deep Links -->
+	<key>CFBundleURLTypes</key>
+	<array>
+		<dict>
+			<key>CFBundleTypeRole</key>
+			<string>Editor</string>
+			<key>CFBundleURLName</key>
+			<string>owenlee.Moneywise</string>
+			<key>CFBundleURLSchemes</key>
+			<array>
+				<string>moneywise</string>
+			</array>
+		</dict>
+	</array>
+
+	<!-- iCloud Sync Permission -->
+	<key>CKSharingSupported</key>
+	<true/>
+	<key>NSCloudKitUsageDescription</key>
+	<string>Moneywise 使用 iCloud 同步您的财务数据，让您在所有设备上都能访问。</string>
+
+	<!-- Speech Recognition Permission (for voice input) -->
+	<key>NSSpeechRecognitionUsageDescription</key>
+	<string>Moneywise 需要语音识别权限，让您可以通过语音快速记录交易。</string>
+
+	<!-- Microphone Permission (for voice input) -->
+	<key>NSMicrophoneUsageDescription</key>
+	<string>Moneywise 需要访问麦克风以录制语音进行记账。</string>
+
+	<!-- Face ID / Touch ID (optional, for app lock) -->
+	<key>NSFaceIDUsageDescription</key>
+	<string>使用 Face ID 或 Touch ID 保护您的财务数据。</string>
+
+	<!-- Background Modes for recurring transactions -->
+	<key>BGTaskSchedulerPermittedIdentifiers</key>
+	<array>
+		<string>com.moneywise.generateRecurring</string>
+	</array>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>processing</string>
+	</array>
+
+	<!-- App Transport Security -->
+	<key>NSAppTransportSecurity</key>
+	<dict>
+		<key>NSAllowsArbitraryLoads</key>
+		<false/>
+		<!-- Allow specific domain for Gemini API if needed -->
+		<key>NSExceptionDomains</key>
+		<dict>
+			<key>generativelanguage.googleapis.com</key>
+			<dict>
+				<key>NSExceptionRequiresForwardSecrecy</key>
+				<false/>
+				<key>NSExceptionMinimumTLSVersion</key>
+				<string>TLSv1.2</string>
+				<key>NSIncludesSubdomains</key>
+				<true/>
+			</dict>
+		</dict>
+	</dict>
+
+	<!-- Supported App Families -->
+	<key>UISupportedInterfaceOrientations</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+	</array>
+	<key>UISupportedInterfaceOrientations~ipad</key>
+	<array>
+		<string>UIInterfaceOrientationPortrait</string>
+		<string>UIInterfaceOrientationPortraitUpsideDown</string>
+		<string>UIInterfaceOrientationLandscapeLeft</string>
+		<string>UIInterfaceOrientationLandscapeRight</string>
+	</array>
+
+	<!-- Launch Screen -->
+	<key>UILaunchScreen</key>
+	<dict>
+		<key>UIImageName</key>
+		<string>LaunchImage</string>
+	</dict>
+</dict>
+</plist>
